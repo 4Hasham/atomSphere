@@ -5,11 +5,11 @@ import { AuthProvider } from "react-oidc-context";
 import "./index.css";
 
 const cognitoAuthConfig = {
-  authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_z06Bf0DEV",
-  client_id: "pjthnt1mro67er63e2ej16v2",
-  redirect_uri: "http://localhost:5173",
-  response_type: "code",
-  scope: "phone openid email",
+  authority: import.meta.env.VITE_COGNITO_AUTH_URL,
+  client_id: import.meta.env.VITE_COGNITO_CLIENT_ID,
+  redirect_uri: import.meta.env.VITE_REDIRECT_URI,
+  response_type: import.meta.env.VITE_COGNITO_RESPONSE_TYPE,
+  scope: import.meta.env.VITE_COGNITO_SCOPE,
   onSigninCallback: () => {
     window.history.replaceState({}, document.title, window.location.pathname);
   },

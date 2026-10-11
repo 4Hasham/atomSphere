@@ -6,6 +6,10 @@ Selecting **View model** opens the model in a new tab on the dedicated
 `/studio?job=<job-id>` page. Studio requests a fresh signed model URL when opened,
 so reloading a Studio URL does not depend on a previously cached URL.
 
+Netlify serves this Vite app as a single-page application. The redirect rule in
+`public/_redirects` rewrites direct requests such as `/studio?job=<job-id>` to
+the app entry point so client-side routes work after deployment and on refresh.
+
 ## Optional model terrain backdrop
 
 When viewing a generated model, enter a latitude and longitude in the viewer's

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RedoIcon, UndoIcon } from "../../brand/icons";
 import { BACKDROPS, findBackdrop } from "../backdrops/backdrops";
 import { isValidSite, MAX_MERCATOR_LATITUDE } from "../geo";
 import { useScene } from "../sceneStore";
@@ -21,17 +22,33 @@ export default function SceneControls({ terrainStatus }) {
   return (
     <aside className="scene-controls" aria-labelledby="scene-controls-title">
       <div className="scene-controls-heading">
-        <span className="terrain-label">SCENE CONTROLS</span>
+        <div className="scene-controls-top">
+          <span className="terrain-label">SCENE CONTROLS</span>
+          <div className="scene-history" role="group" aria-label="History">
+            <button
+              className="studio-icon"
+              type="button"
+              onClick={undo}
+              disabled={!canUndo}
+              aria-label="Undo"
+              title="Undo (Ctrl+Z)"
+            >
+              <UndoIcon />
+            </button>
+            <button
+              className="studio-icon"
+              type="button"
+              onClick={redo}
+              disabled={!canRedo}
+              aria-label="Redo"
+              title="Redo (Ctrl+Shift+Z)"
+            >
+              <RedoIcon />
+            </button>
+          </div>
+        </div>
         <h3 id="scene-controls-title">Scene presets</h3>
         <p>Choose a weather and lighting setup for your 3D scene.</p>
-      </div>
-      <div className="scene-history">
-        <button className="terrain-clear" type="button" onClick={undo} disabled={!canUndo}>
-          Undo
-        </button>
-        <button className="terrain-clear" type="button" onClick={redo} disabled={!canRedo}>
-          Redo
-        </button>
       </div>
       <div className="scene-preset-control">
         <label htmlFor="scene-preset">Preset</label>

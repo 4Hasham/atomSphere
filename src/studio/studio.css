@@ -117,6 +117,38 @@
   min-width: 0;
 }
 
+.viewer-header > .viewer-tools {
+  flex: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Square icon button (theme, undo, redo), matching .studio-back. */
+.studio-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field-bg);
+  color: var(--text-muted);
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.studio-icon:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--field-bg-hover);
+  color: var(--text);
+}
+
+.studio-icon:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
 .viewer-header h2 {
   max-width: 46vw;
   margin: 0;
@@ -372,18 +404,16 @@
   color: var(--text);
 }
 
-.scene-history {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.scene-controls-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.scene-history .terrain-clear {
-  grid-column: auto;
-}
-
-.scene-history .terrain-clear:disabled {
-  opacity: 0.45;
+.scene-history {
+  display: flex;
+  gap: 4px;
 }
 
 .terrain-error {

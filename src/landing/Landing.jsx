@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Logo from "../brand/Logo";
+import ThemeToggle from "../brand/ThemeToggle";
 import Cube from "../stage/Cube";
 import useTypewriter from "../stage/useTypewriter";
 import "../stage/stage.css";
@@ -27,19 +28,6 @@ const STEPS = [
   },
 ];
 
-function ThemeIcon({ theme }) {
-  return theme === "dark" ? (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <circle cx="9" cy="9" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M9 1.5V3.3M9 14.7V16.5M1.5 9H3.3M14.7 9H16.5M3.7 3.7l1.2 1.2M13.1 13.1l1.2 1.2M3.7 14.3l1.2-1.2M13.1 4.9l1.2-1.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  ) : (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path d="M15 11.2A6.5 6.5 0 0 1 6.8 3a6.5 6.5 0 1 0 8.2 8.2Z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export default function Landing({ theme, toggleTheme, onStart, onSignIn }) {
   const [index, setIndex] = useState(0);
   const { typed, done } = useTypewriter(EXAMPLES[index], 45);
@@ -58,14 +46,7 @@ export default function Landing({ theme, toggleTheme, onStart, onSignIn }) {
       <header className="st-header">
         <Logo />
         <div className="st-account">
-          <button
-            type="button"
-            className="st-round"
-            onClick={toggleTheme}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            <ThemeIcon theme={theme} />
-          </button>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <button type="button" className="st-pill" onClick={onSignIn}>Sign in</button>
         </div>
       </header>

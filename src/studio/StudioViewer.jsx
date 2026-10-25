@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Bounds, Environment, Html, Lightformer, OrbitControls } from "@react-three/drei";
 import { Physics, RigidBody } from "@react-three/rapier";
+import ThemeToggle from "../brand/ThemeToggle";
 import Backdrop from "./backdrops/Backdrop";
 import { findBackdrop, groundFor, STUDIO_SURFACES } from "./backdrops/backdrops";
 import SunLight from "./lighting/SunLight";
@@ -21,7 +22,7 @@ function isTextEntry(target) {
     && (target.isContentEditable || target.matches("input, textarea"));
 }
 
-export default function StudioViewer({ url, jobId, prompt, theme = "dark", onBack }) {
+export default function StudioViewer({ url, jobId, prompt, theme = "dark", onToggleTheme, onBack }) {
   const [store] = useState(() => createSceneStore(
     createSceneDocument({ objects: [createJobObject(jobId, prompt)] }),
   ));
@@ -62,7 +63,10 @@ export default function StudioViewer({ url, jobId, prompt, theme = "dark", onBac
               <h2 id="viewer-title">{prompt || "Generated model"}</h2>
               <span className="viewer-id">ID · {jobId}</span>
             </div>
-            <span className="studio-wordmark">atomSphere Studio</span>
+            <div className="viewer-tools">
+              <span className="studio-wordmark">atomSphere Studio</span>
+              <ThemeToggle theme={theme} onToggle={onToggleTheme} className="studio-icon" size={16} />
+            </div>
           </header>
 
           <StudioWorkspace modelUrls={modelUrls} theme={theme} />

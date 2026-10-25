@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { apiRequest } from "../api";
+import Logo from "../brand/Logo";
 import Cube from "./Cube";
 import Shelf from "./Shelf";
 import useJobs from "./useJobs";
@@ -123,7 +124,9 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
       <div className="st-floor" aria-hidden="true" />
 
       <header className="st-header">
-        <button type="button" className="st-brand" onClick={() => go("input")}>atomSphere</button>
+        <button type="button" className="st-brand" onClick={() => go("input")} aria-label="atomSphere, start a new model">
+          <Logo />
+        </button>
 
         <nav aria-label="Steps">
           <ol className="st-steps">

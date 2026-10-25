@@ -1,0 +1,182 @@
+/* Landing page: reuses the Stage background (.st-glow, .st-floor) from stage.css. */
+
+.lp-root {
+  min-height: 100dvh;
+}
+
+.lp-floor {
+  top: 260px;
+}
+
+.lp-main {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 72px;
+}
+
+.lp-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding-top: 4vh;
+  text-align: center;
+}
+
+.lp-title {
+  font-size: clamp(44px, 7vw, 84px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+.lp-title span {
+  color: var(--muted);
+}
+
+.lp-lede {
+  max-width: 560px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+.lp-demo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  max-width: 620px;
+  margin-top: 16px;
+}
+
+.lp-object {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  height: 170px;
+  justify-content: flex-end;
+}
+
+.lp-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 8px 8px 22px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 1px 0 var(--hi) inset, 0 1px 2px var(--shade), 0 24px 50px -26px var(--shade);
+  text-align: left;
+}
+
+.lp-prompt-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.lp-send {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--pri);
+  color: var(--on-pri);
+}
+
+.lp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.lp-cta {
+  min-height: 54px;
+  padding: 0 30px;
+  font-size: 16px;
+}
+
+.lp-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 12px;
+}
+
+.lp-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px;
+  border-radius: 22px;
+  background: var(--glass);
+  box-shadow: 0 1px 2px var(--shade);
+  backdrop-filter: blur(12px);
+}
+
+.lp-step-num {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.lp-step h2 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.lp-step p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.lp-footer {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 28px 28px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.lp-footer .as-logo-word {
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .lp-main {
+    gap: 48px;
+  }
+
+  .lp-lede,
+  .lp-prompt-text {
+    font-size: 16px;
+  }
+
+  .lp-cta {
+    width: 100%;
+  }
+}

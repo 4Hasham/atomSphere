@@ -1,0 +1,14 @@
+{
+  "name": "atomSphere",
+  "short_name": "atomSphere",
+  "description": "Turn a sentence, one photo or three photos into a 3D model you can light, place and keep.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111214",
+  "theme_color": "#111214",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -85,6 +85,7 @@ function App() {
           accessToken={auth.user?.access_token}
           jobId={jobId}
           prompt={prompt}
+          theme={theme}
           onBack={leaveStudio}
         />
       </Suspense>

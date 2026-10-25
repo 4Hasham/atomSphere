@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { Bounds, Environment, Html, Lightformer, OrbitControls } from "@react-three/drei";
 import { Physics, RigidBody } from "@react-three/rapier";
 import Backdrop from "./backdrops/Backdrop";
-import { findBackdrop, groundFor } from "./backdrops/backdrops";
+import { findBackdrop, groundFor, STUDIO_SURFACES } from "./backdrops/backdrops";
 import SunLight from "./lighting/SunLight";
 import { DroppedModel, LoadedModel } from "./objects/SceneModel";
 import ViewerErrorBoundary from "./objects/ViewerErrorBoundary";
@@ -21,7 +21,7 @@ function isTextEntry(target) {
     && (target.isContentEditable || target.matches("input, textarea"));
 }
 
-export default function StudioViewer({ url, jobId, prompt, onBack }) {
+export default function StudioViewer({ url, jobId, prompt, theme = "dark", onBack }) {
   const [store] = useState(() => createSceneStore(
     createSceneDocument({ objects: [createJobObject(jobId, prompt)] }),
   ));
@@ -55,7 +55,7 @@ export default function StudioViewer({ url, jobId, prompt, onBack }) {
         <section className="model-viewer" aria-labelledby="viewer-title">
           <header className="viewer-header">
             <button className="studio-back" type="button" onClick={onBack}>
-              <span aria-hidden="true">←</span> Workspace
+              <span aria-hidden="true">←</span> Shelf
             </button>
             <div>
               <span className="eyebrow"><span className="eyebrow-dot" /> STUDIO · EDIT YOUR SCENE</span>
@@ -65,14 +65,14 @@ export default function StudioViewer({ url, jobId, prompt, onBack }) {
             <span className="studio-wordmark">atomSphere Studio</span>
           </header>
 
-          <StudioWorkspace modelUrls={modelUrls} />
+          <StudioWorkspace modelUrls={modelUrls} theme={theme} />
         </section>
       </main>
     </SceneStoreContext>
   );
 }
 
-function StudioWorkspace({ modelUrls }) {
+function StudioWorkspace({ modelUrls, theme }) {
   const site = useScene((state) => state.document.site);
   const backdrop = findBackdrop(useScene((state) => state.document.backdrop));
   const presetId = useScene((state) => state.document.weather.presetId);
@@ -84,6 +84,8 @@ function StudioWorkspace({ modelUrls }) {
   // An image backdrop lights the scene itself; the preset's light rig is only for the
   // grid and terrain. Its sun still casts the shadows, aimed where the photo's sun is.
   const imageLit = Boolean(backdrop.file);
+  const surface = STUDIO_SURFACES[theme] ?? STUDIO_SURFACES.dark;
+  const background = scenePreset.id === "studio" ? surface.background : scenePreset.background;
 
   // A new key per site rebuilds the terrain collider and re-drops the models.
   const siteKey = site ? `${site.latitude},${site.longitude}` : "no-site";
@@ -100,12 +102,12 @@ function StudioWorkspace({ modelUrls }) {
           >
             {!imageLit && (
               <>
-                <color attach="background" args={[scenePreset.background]} />
+                <color attach="background" args={[background]} />
                 <hemisphereLight
                   args={[scenePreset.ambientColor, "#4b4a43", scenePreset.ambientIntensity]}
                 />
                 <Environment resolution={256} environmentIntensity={scenePreset.envIntensity}>
-                  <color attach="background" args={[scenePreset.background]} />
+                  <color attach="background" args={[background]} />
                   <Lightformer form="rect" intensity={2} color={scenePreset.sunColor} position={[5, 6, 4]} scale={[10, 10, 1]} onUpdate={(l) => l.lookAt(0, 0, 0)} />
                   <Lightformer form="rect" intensity={1} color={scenePreset.fillColor} position={[-6, 3, -4]} scale={[10, 6, 1]} onUpdate={(l) => l.lookAt(0, 0, 0)} />
                   <Lightformer form="ring" intensity={1.5} color={scenePreset.ambientColor} position={[0, 8, 0]} scale={10} onUpdate={(l) => l.lookAt(0, 0, 0)} />
@@ -125,13 +127,37 @@ function StudioWorkspace({ modelUrls }) {
               extent={Math.max(terrain ? 25 : 8, modelSize * 1.5)}
             />
             {!terrain && (
-              <Suspense fallback={<Html center className="viewer-loading">Loading backdrop…</Html>}>
-                <Backdrop
-                  backdrop={backdrop}
-                  environmentIntensity={scenePreset.envIntensity}
-                  modelSize={modelSize}
-                />
-              </Suspense>
+              // A backdrop that fails to download falls back to the grid with a note,
+              // rather than taking the whole Studio down with it.
+              <ViewerErrorBoundary
+                key={backdrop.id}
+                logLabel="Failed to load the backdrop image:"
+                fallback={(
+                  <>
+                    <hemisphereLight args={["#ffffff", "#4b4a43", 1.2]} />
+                    <Backdrop
+                      backdrop={findBackdrop("none")}
+                      environmentIntensity={scenePreset.envIntensity}
+                      modelSize={modelSize}
+                      gridColors={surface.grid}
+                    />
+                    <Html fullscreen>
+                      <p className="viewer-failure viewer-notice" role="alert">
+                        Couldn&apos;t load the {backdrop.name} backdrop. Check your connection or pick another one.
+                      </p>
+                    </Html>
+                  </>
+                )}
+              >
+                <Suspense fallback={<Html center className="viewer-loading">Loading backdrop…</Html>}>
+                  <Backdrop
+                    backdrop={backdrop}
+                    environmentIntensity={scenePreset.envIntensity}
+                    modelSize={modelSize}
+                    gridColors={surface.grid}
+                  />
+                </Suspense>
+              </ViewerErrorBoundary>
             )}
             {scenePreset.weather && <WeatherEffect type={scenePreset.weather} />}
             {scenePreset.weather === "rain" && <LightningFlash />}

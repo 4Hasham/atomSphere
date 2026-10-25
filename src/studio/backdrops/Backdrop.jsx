@@ -28,14 +28,14 @@ function GroundContact({ modelSize }) {
 
 // Everything around the model when there is no real-world terrain. The ground is
 // always y = 0, which is where models stand.
-export default function Backdrop({ backdrop, environmentIntensity, modelSize }) {
+export default function Backdrop({ backdrop, environmentIntensity, modelSize, gridColors }) {
   const sunStrength = backdrop.sunStrength ?? 0.8;
 
   if (!backdrop.file) {
     const gridSize = Math.max(12, Math.ceil(modelSize * 3));
     return (
       <>
-        <gridHelper args={[gridSize, gridSize * 2, "#42534e", "#273733"]} />
+        <gridHelper args={[gridSize, gridSize * 2, ...gridColors]} />
         <ShadowCatcher size={gridSize} sunStrength={sunStrength} />
         <GroundContact modelSize={modelSize} />
       </>

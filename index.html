@@ -15,7 +15,7 @@
             : (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
           document.documentElement.dataset.theme = theme;
           const meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute("content", theme === "light" ? "#e2e2de" : "#111214");
+          if (meta) meta.setAttribute("content", theme === "light" ? "#f5f2ec" : "#111214");
         } catch {
           /* keep the default dark theme */
         }

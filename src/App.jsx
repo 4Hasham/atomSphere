@@ -95,6 +95,7 @@ function App() {
           jobId={jobId}
           prompt={prompt}
           theme={theme}
+          onToggleTheme={toggleTheme}
           onBack={leaveStudio}
         />
       </Suspense>

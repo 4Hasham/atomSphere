@@ -51,24 +51,40 @@ export default function GenerationTray({ jobs, onOpen }) {
   const readyCount = finished.filter((job) => statusGroup(job.status) === "ready").length;
   const summary = active.length > 0
     ? `Generating ${active.length}`
-    : `${readyCount} ready`;
+    : readyCount === finished.length
+      ? `${readyCount} ready`
+      : `${finished.length} finished`;
 
-  function dismiss(jobId) {
-    setDismissed((current) => new Set([...current, jobId]));
+  function dismiss(jobIds) {
+    setDismissed((current) => new Set([...current, ...jobIds]));
   }
 
   return (
     <aside className={`st-tray ${open ? "is-open" : ""}`} aria-label="Model generations">
-      <button
-        type="button"
-        className="st-tray-head"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span className={`st-tray-dot ${active.length > 0 ? "is-busy" : ""}`} aria-hidden="true" />
-        <span className="st-tray-summary">{summary}</span>
-        <span className="st-tray-toggle">{open ? "Hide" : "Show"}</span>
-      </button>
+      <div className="st-tray-head">
+        <button
+          type="button"
+          className="st-tray-expand"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <span className={`st-tray-dot ${active.length > 0 ? "is-busy" : ""}`} aria-hidden="true" />
+          <span className="st-tray-summary">{summary}</span>
+          <span className="st-tray-toggle">{open ? "Hide" : "Show"}</span>
+        </button>
+        {/* Once nothing is running, one click clears the whole tray, open or not. */}
+        {active.length === 0 && (
+          <button
+            type="button"
+            className="st-tray-dismiss"
+            aria-label="Dismiss finished generations"
+            title="Dismiss"
+            onClick={() => dismiss(finished.map((job) => job.jobId))}
+          >
+            ✕
+          </button>
+        )}
+      </div>
 
       {/* Announces arrivals and completions, not the ticking timers. */}
       <p className="sr-only" aria-live="polite">
@@ -108,7 +124,7 @@ export default function GenerationTray({ jobs, onOpen }) {
                     type="button"
                     className="st-tray-dismiss"
                     aria-label={`Dismiss ${jobTitle(job)}`}
-                    onClick={() => dismiss(job.jobId)}
+                    onClick={() => dismiss([job.jobId])}
                   >
                     ✕
                   </button>

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { apiRequest } from "../api";
 import Logo from "../brand/Logo";
+import ThemeToggle from "../brand/ThemeToggle";
+import AccountMenu from "./AccountMenu";
 import Cube from "./Cube";
 import GenerationTray from "./GenerationTray";
 import Shelf from "./Shelf";
@@ -24,23 +26,6 @@ import "./stage.css";
 
 // The steps of making a model. The shelf is a destination, reached from the header.
 const CREATE_STEPS = STEPS.filter((item) => item.id !== "shelf");
-
-function SunIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <circle cx="9" cy="9" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M9 1.5V3.3M9 14.7V16.5M1.5 9H3.3M14.7 9H16.5M3.7 3.7l1.2 1.2M13.1 13.1l1.2 1.2M3.7 14.3l1.2-1.2M13.1 4.9l1.2-1.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path d="M15 11.2A6.5 6.5 0 0 1 6.8 3a6.5 6.5 0 1 0 8.2 8.2Z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 export default function Stage({ auth, theme, toggleTheme, step, setStep, refreshKey, onCreated, onOpenModel }) {
   const [draft, setDraft] = useState(EMPTY_DRAFT);
@@ -160,31 +145,20 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
           )}
         </nav>
 
+        {/* Navigation first, then settings, then the account menu (email + sign out). */}
         <div className="st-account">
-          <button
-            type="button"
-            className="st-round"
-            onClick={toggleTheme}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-          </button>
+          {auth.isAuthenticated && (step === "shelf" ? (
+            <button type="button" className="st-pill" onClick={() => go("input")}>New model</button>
+          ) : (
+            <button type="button" className="st-pill st-shelf-link" onClick={() => go("shelf")}>
+              {activeCount > 0 && <span className="st-tray-dot is-busy" aria-hidden="true" />}
+              Shelf
+              {jobs.length > 0 && <span className="st-pill-count">{jobs.length}</span>}
+            </button>
+          ))}
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           {auth.isAuthenticated ? (
-            <>
-              <span className="st-email" title={email}>{email}</span>
-              {step === "shelf" ? (
-                <button type="button" className="st-pill" onClick={() => go("input")}>New model</button>
-              ) : (
-                <button type="button" className="st-pill st-shelf-link" onClick={() => go("shelf")}>
-                  {activeCount > 0 && <span className="st-tray-dot is-busy" aria-hidden="true" />}
-                  Shelf
-                  {jobs.length > 0 && <span className="st-pill-count">{jobs.length}</span>}
-                </button>
-              )}
-              <button type="button" className="st-pill" onClick={() => { setStep("input"); auth.removeUser(); }}>
-                Sign out
-              </button>
-            </>
+            <AccountMenu email={email} onSignOut={() => { setStep("input"); auth.removeUser(); }} />
           ) : (
             <button type="button" className="st-pill" onClick={() => auth.signinRedirect()}>Sign in</button>
           )}

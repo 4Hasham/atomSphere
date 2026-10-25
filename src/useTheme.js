@@ -29,7 +29,7 @@ export default function useTheme() {
 
     const themeColor = document.querySelector('meta[name="theme-color"]');
     if (themeColor) {
-      themeColor.setAttribute("content", theme === "light" ? "#f5f2ec" : "#111214");
+      themeColor.setAttribute("content", theme === "light" ? "#f2f4f7" : "#111214");
     }
   }, [theme]);
 

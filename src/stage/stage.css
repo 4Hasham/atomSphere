@@ -72,7 +72,7 @@
    account areas hold (signing in adds the email and makes the right side wider). */
 .st-header {
   position: relative;
-  z-index: 2;
+  z-index: 20; /* above the generation tray, so the account menu opens over it */
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
@@ -220,13 +220,57 @@
   text-align: center;
 }
 
-.st-email {
-  max-width: 200px;
+/* Account menu: avatar button with the email and Sign out inside. */
+.st-menu {
+  position: relative;
+}
+
+.st-avatar {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.st-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  max-width: 280px;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 1px 0 var(--hi) inset, 0 1px 2px var(--shade), 0 24px 48px -24px var(--shade);
+  animation: st-rise 0.2s ease both;
+}
+
+.st-menu-email {
+  margin: 0;
+  padding: 8px 10px 10px;
   overflow: hidden;
+  border-bottom: 1px solid var(--line-1);
   color: var(--muted);
   font-size: 13px;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.st-menu-item {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--ink);
+  font-size: 14px;
+  text-align: left;
+}
+
+.st-menu-item:hover,
+.st-menu-item:focus-visible {
+  outline: none;
+  background: var(--soft);
 }
 
 /* ---------- Stage: headline and object ---------- */
@@ -942,6 +986,12 @@
 .st-tray-head {
   display: flex;
   align-items: center;
+}
+
+.st-tray-expand {
+  display: flex;
+  flex: 1;
+  align-items: center;
   gap: 10px;
   min-height: 44px;
   padding: 0 14px;
@@ -951,6 +1001,23 @@
   color: var(--ink);
   font-size: 13px;
   text-align: left;
+}
+
+/* The whole-tray dismiss: a proper round target, not the small per-item one. */
+.st-tray-head .st-tray-dismiss {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 6px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.st-tray-head .st-tray-dismiss:hover {
+  background: var(--soft);
+  color: var(--ink);
 }
 
 .st-tray-summary {
@@ -1096,10 +1163,6 @@
   .is-current .st-step-label {
     display: inline;
   }
-
-  .st-email {
-    display: none;
-  }
 }
 
 @media (max-width: 600px) {
@@ -1116,6 +1179,23 @@
 
   .st-tray.is-open {
     width: auto;
+  }
+
+  /* Leave room above the docked tray so it never covers the Continue button. */
+  .st-root:has(.st-tray) .st-convo {
+    padding-bottom: 88px;
+  }
+
+  /* Two models per row, and let the page scroll instead of a box inside the card. */
+  .st-shelf {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .st-pedestal {
+    height: 116px;
   }
 
   .st-convo {

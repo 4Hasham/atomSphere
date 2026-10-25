@@ -4,7 +4,7 @@ import { apiRequest } from "./api";
 const MODEL_URL_API_URL = `${import.meta.env.VITE_API_URL}/requests/model-url`;
 const StudioViewer = lazy(() => import("./studio/StudioViewer"));
 
-export default function Studio({ accessToken, jobId, prompt, theme, onBack }) {
+export default function Studio({ accessToken, jobId, prompt, theme, onToggleTheme, onBack }) {
   const [model, setModel] = useState(null);
   const [error, setError] = useState(jobId ? "" : "No model was selected for Studio.");
   const [loading, setLoading] = useState(Boolean(jobId));
@@ -48,6 +48,7 @@ export default function Studio({ accessToken, jobId, prompt, theme, onBack }) {
           prompt={model.prompt}
           url={model.url}
           theme={theme}
+          onToggleTheme={onToggleTheme}
           onBack={onBack}
         />
       </Suspense>

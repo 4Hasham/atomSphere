@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Bounds, Environment, Html, Lightformer, OrbitControls } from "@react-three/drei";
 import { Physics, RigidBody } from "@react-three/rapier";
+import ThemeToggle from "../brand/ThemeToggle";
 import Backdrop from "./backdrops/Backdrop";
 import { findBackdrop, groundFor, STUDIO_SURFACES } from "./backdrops/backdrops";
 import SunLight from "./lighting/SunLight";
@@ -16,12 +17,17 @@ import SceneControls from "./ui/SceneControls";
 import { SCENE_PRESETS } from "./weather/scenePresets";
 import { LightningFlash, WeatherEffect } from "./weather/WeatherEffect";
 
+// Touch screens pinch to zoom; mice scroll.
+const ORBIT_HINT = window.matchMedia("(pointer: coarse)").matches
+  ? "Drag to orbit · Pinch to zoom"
+  : "Drag to orbit · Scroll to zoom";
+
 function isTextEntry(target) {
   return target instanceof HTMLElement
     && (target.isContentEditable || target.matches("input, textarea"));
 }
 
-export default function StudioViewer({ url, jobId, prompt, theme = "dark", onBack }) {
+export default function StudioViewer({ url, jobId, prompt, theme = "dark", onToggleTheme, onBack }) {
   const [store] = useState(() => createSceneStore(
     createSceneDocument({ objects: [createJobObject(jobId, prompt)] }),
   ));
@@ -62,7 +68,10 @@ export default function StudioViewer({ url, jobId, prompt, theme = "dark", onBac
               <h2 id="viewer-title">{prompt || "Generated model"}</h2>
               <span className="viewer-id">ID · {jobId}</span>
             </div>
-            <span className="studio-wordmark">atomSphere Studio</span>
+            <div className="viewer-tools">
+              <span className="studio-wordmark">atomSphere Studio</span>
+              <ThemeToggle theme={theme} onToggle={onToggleTheme} className="studio-icon" size={16} />
+            </div>
           </header>
 
           <StudioWorkspace modelUrls={modelUrls} theme={theme} />
@@ -219,7 +228,7 @@ function StudioWorkspace({ modelUrls, theme }) {
             />
           </Canvas>
         </div>
-        <p className="viewer-hint">Drag to orbit · Scroll to zoom</p>
+        <p className="viewer-hint">{ORBIT_HINT}</p>
       </div>
       <SceneControls terrainStatus={terrainStatus} />
     </div>

@@ -50,7 +50,7 @@ function ShelfItem({ job, onOpen }) {
   );
 }
 
-export default function Shelf({ jobs, loading, error, onReload, onOpen, onNew }) {
+export default function Shelf({ jobs, loading, error, onReload, onOpen }) {
   const [filter, setFilter] = useState("all");
 
   const counts = useMemo(() => {
@@ -88,7 +88,6 @@ export default function Shelf({ jobs, loading, error, onReload, onOpen, onNew })
             </button>
           ))}
         </div>
-        <button type="button" className="st-secondary" onClick={onNew}>New model</button>
       </div>
 
       {error && (

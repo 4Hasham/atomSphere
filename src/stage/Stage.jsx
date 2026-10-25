@@ -21,6 +21,9 @@ import {
 } from "./model";
 import "./stage.css";
 
+// The steps of making a model. The shelf is a destination, reached from the header.
+const CREATE_STEPS = STEPS.filter((item) => item.id !== "shelf");
+
 function SunIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
@@ -126,11 +129,15 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
       <header className="st-header">
         <button type="button" className="st-brand" onClick={() => go("input")}>atomSphere</button>
 
+        {/* The steps cover making a model; the shelf is a place, reached from the header
+            button. The nav stays in the DOM on the shelf to hold the centre column. */}
         <nav aria-label="Steps">
+          {step !== "shelf" && (
           <ol className="st-steps">
-            {STEPS.map((item, index) => {
+            {CREATE_STEPS.map((item, index) => {
               const current = index === stepIndex;
-              const complete = index < stepIndex && item.id !== "shelf";
+              const complete = index < stepIndex;
+              const label = item.id === "account" && auth.isAuthenticated ? "Generate" : item.label;
               return (
                 <li key={item.id}>
                   <button
@@ -141,12 +148,13 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
                     onClick={() => go(item.id)}
                   >
                     <span className="st-step-mark" aria-hidden="true">{complete ? "✓" : index + 1}</span>
-                    <span className="st-step-label">{item.label}</span>
+                    <span className="st-step-label">{label}</span>
                   </button>
                 </li>
               );
             })}
           </ol>
+          )}
         </nav>
 
         <div className="st-account">
@@ -161,6 +169,15 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
           {auth.isAuthenticated ? (
             <>
               <span className="st-email" title={email}>{email}</span>
+              {step === "shelf" ? (
+                <button type="button" className="st-pill" onClick={() => go("input")}>New model</button>
+              ) : (
+                <button type="button" className="st-pill st-shelf-link" onClick={() => go("shelf")}>
+                  {activeCount > 0 && <span className="st-tray-dot is-busy" aria-hidden="true" />}
+                  Shelf
+                  {jobs.length > 0 && <span className="st-pill-count">{jobs.length}</span>}
+                </button>
+              )}
               <button type="button" className="st-pill" onClick={() => { setStep("input"); auth.removeUser(); }}>
                 Sign out
               </button>
@@ -216,7 +233,6 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
               error={jobsError}
               onReload={reload}
               onOpen={onOpenModel}
-              onNew={() => go("input")}
             />
           )}
         </div>

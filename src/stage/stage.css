@@ -84,6 +84,11 @@
   justify-self: start;
 }
 
+/* Same height with or without the step bar, so the header doesn't jump on the shelf. */
+.st-header nav {
+  min-height: 44px;
+}
+
 .st-account {
   justify-self: end;
 }
@@ -134,8 +139,15 @@
   color: var(--on-pri);
 }
 
+/* Steps that can't be reached yet look it, so only real options read as clickable. */
 .st-steps button:disabled {
   cursor: default;
+  opacity: 0.45;
+}
+
+.st-steps button:not(:disabled):not(.is-current):hover {
+  background: var(--soft);
+  color: var(--ink);
 }
 
 .st-step-mark {
@@ -188,6 +200,24 @@
 .st-pill {
   padding: 0 14px;
   border-radius: 999px;
+}
+
+.st-shelf-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.st-pill-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
 }
 
 .st-email {
@@ -1052,6 +1082,11 @@
     width: 100%;
     display: flex;
     justify-content: center;
+  }
+
+  /* On the shelf the step bar is empty; don't leave a blank row. */
+  .st-header nav:empty {
+    display: none;
   }
 
   .st-step-label {

@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Vector3 } from "three";
 
@@ -7,6 +7,12 @@ import { Vector3 } from "three";
 export default function SunLight({ direction, color, intensity, extent }) {
   const light = useRef();
   const dir = useMemo(() => new Vector3(...direction).normalize(), [direction]);
+
+  // The shadow-camera props below only change the bounds; three.js keeps using the old
+  // projection until it is rebuilt, which clips every shadow once the light moves out.
+  useLayoutEffect(() => {
+    light.current?.shadow.camera.updateProjectionMatrix();
+  }, [extent]);
 
   useFrame((state) => {
     const l = light.current;

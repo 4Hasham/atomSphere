@@ -21,15 +21,20 @@ export function createSceneStore(initialDocument) {
       past: [],
       future: [],
 
-      // A real-world terrain and the procedural City/Mountains scene occupy the same
-      // origin, so they must never be active together (the backdrop would loom over
-      // the model). Setting a site clears the backdrop; choosing a backdrop clears the site.
+      // A real-world terrain and an image backdrop both supply the ground around the
+      // model, so they must never be active together. Setting a site clears the
+      // backdrop; choosing a backdrop clears the site.
       setSite: (site) => edit(() => (site ? { site, backdrop: "none" } : { site: null })),
       setBackdrop: (backdrop) => edit(() => (
         backdrop === "none" ? { backdrop } : { backdrop, site: null }
       )),
       setWeatherPreset: (presetId) => edit((document) => ({
         weather: { ...document.weather, presetId },
+      })),
+      setObjectSize: (id, sizeMeters) => edit((document) => ({
+        objects: document.objects.map((object) => (
+          object.id === id ? { ...object, sizeMeters } : object
+        )),
       })),
 
       undo: () => {

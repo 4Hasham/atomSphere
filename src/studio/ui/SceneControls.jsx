@@ -1,11 +1,13 @@
 import { useState } from "react";
+import { BACKDROPS, findBackdrop } from "../backdrops/backdrops";
 import { isValidSite, MAX_MERCATOR_LATITUDE } from "../geo";
 import { useScene } from "../sceneStore";
 import { SCENE_PRESETS } from "../weather/scenePresets";
 
 export default function SceneControls({ terrainStatus }) {
   const site = useScene((state) => state.document.site);
-  const backdrop = useScene((state) => state.document.backdrop);
+  const backdrop = findBackdrop(useScene((state) => state.document.backdrop));
+  const objects = useScene((state) => state.document.objects);
   const presetId = useScene((state) => state.document.weather.presetId);
   const setBackdrop = useScene((state) => state.setBackdrop);
   const setWeatherPreset = useScene((state) => state.setWeatherPreset);
@@ -48,23 +50,28 @@ export default function SceneControls({ terrainStatus }) {
         <label htmlFor="scene-background">Background</label>
         <select
           id="scene-background"
-          value={backdrop}
+          value={backdrop.id}
           onChange={(event) => setBackdrop(event.target.value)}
         >
-          <option value="none">Studio</option>
-          <option value="city">City</option>
-          <option value="mountains">Mountains</option>
+          {BACKDROPS.map((option) => (
+            <option key={option.id} value={option.id}>{option.name}</option>
+          ))}
         </select>
         <p>
           {terrain
             ? "Real-world terrain is active. Choosing a preset background replaces it."
-            : backdrop === "city"
-              ? "A small city with streets and surrounding buildings."
-              : backdrop === "mountains"
-                ? "A green mountain setting with a forest of trees."
-                : "Keep the original clean studio background."}
+            : backdrop.description}
         </p>
+        {backdrop.file && (
+          <p className="terrain-attribution">
+            HDRI from <a href="https://polyhaven.com" target="_blank" rel="noreferrer">Poly Haven</a> (CC0)
+          </p>
+        )}
       </div>
+
+      {objects.map((object) => (
+        <ModelSizeControl key={`${object.id}-${object.sizeMeters}`} object={object} />
+      ))}
 
       <section className="terrain-section" aria-labelledby="terrain-title">
         <h3 id="terrain-title">Terrain backdrop</h3>
@@ -83,6 +90,48 @@ export default function SceneControls({ terrainStatus }) {
         )}
       </section>
     </aside>
+  );
+}
+
+const MIN_MODEL_SIZE = 0.1;
+const MAX_MODEL_SIZE = 500;
+
+// Applies on Enter or blur rather than per keystroke, so each resize is one undo step.
+function ModelSizeControl({ object }) {
+  const setObjectSize = useScene((state) => state.setObjectSize);
+  const [value, setValue] = useState(String(object.sizeMeters));
+  const inputId = `model-size-${object.id}`;
+
+  function apply() {
+    const size = Number(value);
+    if (Number.isFinite(size) && size >= MIN_MODEL_SIZE && size <= MAX_MODEL_SIZE) {
+      if (size !== object.sizeMeters) setObjectSize(object.id, size);
+    } else {
+      setValue(String(object.sizeMeters));
+    }
+  }
+
+  return (
+    <form
+      className="scene-preset-control"
+      onSubmit={(event) => {
+        event.preventDefault();
+        apply();
+      }}
+    >
+      <label htmlFor={inputId}>Model size (m)</label>
+      <input
+        id={inputId}
+        type="number"
+        min={MIN_MODEL_SIZE}
+        max={MAX_MODEL_SIZE}
+        step="any"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onBlur={apply}
+      />
+      <p>Length of the model&apos;s longest side. A car is about 4.5 m, a house 10–20 m.</p>
+    </form>
   );
 }
 

@@ -5,28 +5,28 @@ import { RigidBody, useRapier } from "@react-three/rapier";
 import { Box3, Vector3 } from "three";
 import { RAY_START_Y } from "../constants";
 
-// 1 world unit = 1 meter, so the car is a real car next to a real mountain.
-const MODEL_SIZE_METERS = 4.5;
 const SPAWN_CLEARANCE = 0.1;    // meters between the car's underside and the ground (no visible drop)
 const CAMERA_OFFSET = { x: 6, y: 5, z: 9 }; // meters from the car: a close-up (~12 m away)
 const KILL_Y = -20000;
 
-export function LoadedModel({ url, terrainBackdrop = false }) {
+// 1 world unit = 1 meter: the model is scaled so its largest side is sizeMeters.
+// anchor "base" stands it on y = 0; "center" puts its middle at the origin, which
+// is the RigidBody origin when it is dropped onto terrain.
+export function LoadedModel({ url, sizeMeters, anchor = "base" }) {
   const { scene } = useGLTF(url);
   const model = useMemo(() => {
     const clone = scene.clone(true);
-    if (terrainBackdrop) {
-      const bounds = new Box3().setFromObject(clone);
-      const size = bounds.getSize(new Vector3());
-      const largest = Math.max(size.x, size.y, size.z);
+    const bounds = new Box3().setFromObject(clone);
+    const size = bounds.getSize(new Vector3());
+    const largest = Math.max(size.x, size.y, size.z);
 
-      if (largest > 0) {
-        clone.scale.multiplyScalar(MODEL_SIZE_METERS / largest);
-        clone.updateMatrixWorld(true);
-        // Center on its own origin so the RigidBody origin is the car's center
-        const scaled = new Box3().setFromObject(clone);
-        clone.position.sub(scaled.getCenter(new Vector3()));
-      }
+    if (largest > 0) {
+      clone.scale.multiplyScalar(sizeMeters / largest);
+      clone.updateMatrixWorld(true);
+      const scaled = new Box3().setFromObject(clone);
+      const center = scaled.getCenter(new Vector3());
+      if (anchor === "base") center.y = scaled.min.y;
+      clone.position.sub(center);
     }
     clone.traverse((child) => {
       if (child.isMesh) {
@@ -36,14 +36,14 @@ export function LoadedModel({ url, terrainBackdrop = false }) {
       }
     });
     return clone;
-  }, [scene, terrainBackdrop]);
+  }, [scene, sizeMeters, anchor]);
 
   return <primitive object={model} />;
 }
 
 // Parks the car high up, waits for the terrain collider, finds the ground height under
 // the car's footprint, places the car resting on it (no fall), and frames a close-up camera.
-export function DroppedModel({ url }) {
+export function DroppedModel({ url, sizeMeters }) {
   const body = useRef();
   const visual = useRef();
   const { world, rapier } = useRapier();
@@ -134,7 +134,7 @@ export function DroppedModel({ url }) {
       angularDamping={0.5}
     >
       <group ref={visual}>
-        <LoadedModel url={url} terrainBackdrop />
+        <LoadedModel url={url} sizeMeters={sizeMeters} anchor="center" />
       </group>
     </RigidBody>
   );

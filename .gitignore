@@ -25,3 +25,6 @@ dist-ssr
 
 .env
 .claude/
+
+# HDRIs are hosted on S3; keep local copies out of git
+public/hdri/

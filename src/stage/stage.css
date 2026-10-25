@@ -986,6 +986,12 @@
 .st-tray-head {
   display: flex;
   align-items: center;
+}
+
+.st-tray-expand {
+  display: flex;
+  flex: 1;
+  align-items: center;
   gap: 10px;
   min-height: 44px;
   padding: 0 14px;
@@ -995,6 +1001,23 @@
   color: var(--ink);
   font-size: 13px;
   text-align: left;
+}
+
+/* The whole-tray dismiss: a proper round target, not the small per-item one. */
+.st-tray-head .st-tray-dismiss {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 6px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.st-tray-head .st-tray-dismiss:hover {
+  background: var(--soft);
+  color: var(--ink);
 }
 
 .st-tray-summary {
@@ -1156,6 +1179,23 @@
 
   .st-tray.is-open {
     width: auto;
+  }
+
+  /* Leave room above the docked tray so it never covers the Continue button. */
+  .st-root:has(.st-tray) .st-convo {
+    padding-bottom: 88px;
+  }
+
+  /* Two models per row, and let the page scroll instead of a box inside the card. */
+  .st-shelf {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .st-pedestal {
+    height: 116px;
   }
 
   .st-convo {

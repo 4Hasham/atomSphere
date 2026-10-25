@@ -17,6 +17,11 @@ import SceneControls from "./ui/SceneControls";
 import { SCENE_PRESETS } from "./weather/scenePresets";
 import { LightningFlash, WeatherEffect } from "./weather/WeatherEffect";
 
+// Touch screens pinch to zoom; mice scroll.
+const ORBIT_HINT = window.matchMedia("(pointer: coarse)").matches
+  ? "Drag to orbit · Pinch to zoom"
+  : "Drag to orbit · Scroll to zoom";
+
 function isTextEntry(target) {
   return target instanceof HTMLElement
     && (target.isContentEditable || target.matches("input, textarea"));
@@ -223,7 +228,7 @@ function StudioWorkspace({ modelUrls, theme }) {
             />
           </Canvas>
         </div>
-        <p className="viewer-hint">Drag to orbit · Scroll to zoom</p>
+        <p className="viewer-hint">{ORBIT_HINT}</p>
       </div>
       <SceneControls terrainStatus={terrainStatus} />
     </div>

@@ -74,7 +74,7 @@ export const BACKDROPS = [
 // The plain Studio grid follows the app theme, so in the light theme it doesn't sit
 // in the page as a dark hole. Weather presets keep their own sky colours.
 export const STUDIO_SURFACES = {
-  light: { background: "#e8e4dc", grid: ["#a9a397", "#cfc9be"] },
+  light: { background: "#e6e9ee", grid: ["#a3aab6", "#c9ced7"] },
   dark: { background: "#17181a", grid: ["#4a4c52", "#2c2e33"] },
 };
 

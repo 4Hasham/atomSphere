@@ -21,6 +21,21 @@ person toggles them.
 
 Code lives in `src/stage/`; Studio styles are in `src/studio/studio.css`.
 
+## Brand
+
+- **Mark:** a solid sphere with its orbit engraved into it and one dot for the
+  atom. `src/brand/Logo.jsx` exports `Mark` (the symbol, in `currentColor`) and
+  `Logo` (mark + wordmark, set in Geist). Below 24 px it switches to a thicker
+  cut so it stays legible.
+- **Icons:** `public/favicon.svg` (adapts to light and dark tabs),
+  `favicon.ico` (16/32/48), `apple-touch-icon.png`, `icon-192.png`,
+  `icon-512.png`, `icon-maskable-512.png`, listed in `site.webmanifest`.
+- **Link previews:** `public/og-image.jpg` (1200×630). Set `VITE_SITE_URL`
+  (no trailing slash) so `og:image` resolves to an absolute URL.
+- **Landing page:** signed-out visitors to `/` see `src/landing/`;
+  *Start creating* opens the Stage at `/create`. Signed-in users go straight to
+  the Stage.
+
 ## Studio
 
 Selecting a ready model on the shelf opens it in the same tab on the dedicated

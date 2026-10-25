@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { apiRequest } from "./api";
 import Studio, { StudioStatus } from "./Studio";
+import Landing from "./landing/Landing";
 import Stage from "./stage/Stage";
 import { CREATE_JOB_URL, DRAFT_STORAGE_KEY, jobTitle } from "./stage/model";
 import useTheme from "./useTheme";
@@ -27,10 +28,12 @@ function App() {
   useEffect(() => {
     document.title = pathname === "/studio"
       ? "Studio — atomSphere"
-      : step === "shelf"
+      : pathname === "/" && !auth.isAuthenticated
+        ? "atomSphere — Ideas in. 3D objects out."
+        : step === "shelf"
         ? "Shelf — atomSphere"
         : "atomSphere — Ideas in. 3D objects out.";
-  }, [pathname, step]);
+  }, [pathname, step, auth.isAuthenticated]);
 
   // Submit a draft that was saved before the Cognito redirect, then show the shelf.
   useEffect(() => {
@@ -56,6 +59,12 @@ function App() {
     const params = new URLSearchParams({ job: job.jobId, prompt: jobTitle(job) });
     window.history.pushState({}, "", `/studio?${params}`);
     setPathname("/studio");
+  }
+
+  function navigate(path) {
+    window.history.pushState({}, "", path);
+    setPathname(path);
+    window.scrollTo(0, 0);
   }
 
   function leaveStudio() {
@@ -89,6 +98,17 @@ function App() {
           onBack={leaveStudio}
         />
       </Suspense>
+    );
+  }
+
+  if (pathname === "/" && !auth.isAuthenticated) {
+    return (
+      <Landing
+        theme={theme}
+        toggleTheme={toggleTheme}
+        onStart={() => navigate("/create")}
+        onSignIn={() => auth.signinRedirect()}
+      />
     );
   }
 

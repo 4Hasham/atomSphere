@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { apiRequest } from "../api";
+import Logo from "../brand/Logo";
 import Cube from "./Cube";
 import GenerationTray from "./GenerationTray";
 import Shelf from "./Shelf";
@@ -127,7 +128,9 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
       <div className="st-floor" aria-hidden="true" />
 
       <header className="st-header">
-        <button type="button" className="st-brand" onClick={() => go("input")}>atomSphere</button>
+        <button type="button" className="st-brand" onClick={() => go("input")} aria-label="atomSphere, start a new model">
+          <Logo />
+        </button>
 
         {/* The steps cover making a model; the shelf is a place, reached from the header
             button. The nav stays in the DOM on the shelf to hold the centre column. */}

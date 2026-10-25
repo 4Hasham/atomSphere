@@ -33,3 +33,33 @@ export function RedoIcon({ size = 16 }) {
     </svg>
   );
 }
+
+// Input modes: a sentence, one photo, three photos.
+
+export function TextIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M3 4.5h12M3 9h12M3 13.5h7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function PhotoIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="2.25" y="3.25" width="13.5" height="11.5" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path d="m2.75 12.5 3.75-3.75 3 3 2-2 3.75 3.75" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="11.75" cy="6.75" r="1.1" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function PhotosIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M5 2.75h9.25a1.75 1.75 0 0 1 1.75 1.75V12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="2" y="5.5" width="11" height="10" rx="1.75" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path d="m2.5 13.25 3-3 2.5 2.5 1.5-1.5 3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}

@@ -491,7 +491,22 @@
   font-weight: 600;
 }
 
-.st-tabs span {
+.st-mode-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.st-mode-title svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.is-on .st-mode-title svg {
+  color: var(--ink);
+}
+
+.st-mode-hint {
   color: var(--muted);
   font-size: 12px;
 }
@@ -1207,8 +1222,19 @@
     border-radius: 22px;
   }
 
-  .st-tabs {
-    grid-template-columns: 1fr;
+  .st-modes button {
+    min-height: 60px;
+    padding: 6px 4px;
+  }
+
+  .st-modes .st-mode-title {
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+  }
+
+  .st-mode-hint {
+    display: none;
   }
 
   .st-views {

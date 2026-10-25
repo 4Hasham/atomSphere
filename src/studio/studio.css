@@ -1,0 +1,531 @@
+/* Studio (3D viewer) styles. Uses the tokens in index.css. */
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+/* ---------- Studio ---------- */
+
+.studio-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100dvh;
+  padding: clamp(10px, 1.8vh, 18px) clamp(12px, 2.4vw, 30px);
+  overflow: hidden;
+}
+
+.studio-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex: none;
+  padding-bottom: 4px;
+}
+
+.studio-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field-bg);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.studio-back:hover {
+  border-color: var(--line-strong);
+  background: var(--field-bg-hover);
+  color: var(--text);
+}
+
+.studio-wordmark {
+  flex: none;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.studio-status {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+
+.studio-load-error {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.requests-state {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.model-viewer {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex: none;
+  padding-bottom: 2px;
+}
+
+.viewer-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.viewer-header h2 {
+  max-width: 46vw;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.viewer-id {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.viewer-workspace {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) 292px;
+  gap: 10px;
+  min-height: 0;
+}
+
+.viewer-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.viewer-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--viewport-bg);
+  box-shadow: inset 0 1px 0 rgba(var(--ink-rgb), 0.05), var(--soft-shadow);
+}
+
+.viewer-canvas canvas {
+  outline: none;
+}
+
+.viewer-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  z-index: 2;
+  margin: 0;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(8, 10, 13, 0.72);
+  color: #dce4ee;
+  font-size: 0.6rem;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+  transform: translateX(-50%);
+}
+
+.viewer-loading {
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(8, 10, 13, 0.85);
+  color: #dce4ee;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.viewer-failure {
+  max-width: 280px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 120, 120, 0.3);
+  border-radius: 10px;
+  background: rgba(30, 12, 12, 0.9);
+  color: #ffc9c9;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+/* A failure note pinned to the top of the canvas rather than over the model. */
+.viewer-notice {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  width: max-content;
+  max-width: min(420px, calc(100% - 24px));
+  transform: translateX(-50%);
+}
+
+.scene-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
+}
+
+.scene-controls-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.terrain-label {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.scene-controls h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.scene-controls p {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 0.64rem;
+  line-height: 1.45;
+}
+
+.scene-preset-control {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.scene-preset-control label {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.scene-controls select,
+.terrain-form input,
+.scene-preset-control input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field-bg);
+  color: var(--text);
+  font-size: 0.72rem;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.scene-controls select:focus,
+.terrain-form input:focus,
+.scene-preset-control input:focus {
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.scene-controls select option {
+  background: var(--bg-soft);
+  color: var(--text);
+}
+
+.terrain-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.terrain-description {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 0.64rem;
+  line-height: 1.45;
+}
+
+.terrain-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.terrain-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.terrain-form label span {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.terrain-submit,
+.terrain-clear {
+  grid-column: 1 / -1;
+  height: 30px;
+  border: 1px solid var(--accent-line);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.66rem;
+  font-weight: 500;
+  transition: background 0.18s ease, opacity 0.18s ease;
+}
+
+.terrain-submit:hover:not(:disabled) {
+  background: var(--accent-line);
+  color: var(--accent-ink);
+}
+
+.terrain-submit:disabled {
+  opacity: 0.55;
+}
+
+.terrain-clear {
+  border-color: var(--line);
+  background: var(--field-bg);
+  color: var(--text-muted);
+}
+
+.terrain-clear:hover:not(:disabled) {
+  background: var(--field-bg-hover);
+  color: var(--text);
+}
+
+.scene-history {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.scene-history .terrain-clear {
+  grid-column: auto;
+}
+
+.scene-history .terrain-clear:disabled {
+  opacity: 0.45;
+}
+
+.terrain-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.64rem;
+}
+
+.terrain-attribution {
+  opacity: 0.75;
+  font-size: 0.54rem !important;
+}
+
+/* ---------- Toast / boot ---------- */
+
+.toast {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 14px;
+  border: 1px solid var(--danger-line);
+  border-radius: 10px;
+  /* Tinted but opaque, so the message stays readable over the stage. */
+  background: linear-gradient(var(--danger-soft), var(--danger-soft)), var(--card);
+  box-shadow: var(--soft-shadow);
+  color: var(--danger);
+  font-size: 0.78rem;
+  backdrop-filter: blur(10px);
+  transform: translateX(-50%);
+}
+
+.toast button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 0.65rem;
+  opacity: 0.8;
+}
+
+.boot-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  height: 100dvh;
+}
+
+.boot-text {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.boot-line {
+  width: 120px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: scan 1.8s ease-in-out infinite;
+}
+
+/* ---------- Animations ---------- */
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes scan {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scaleX(0.6);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* ---------- Responsive ---------- */
+
+
+@media (max-width: 1023px) {
+  .viewer-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .scene-controls {
+    max-height: 38vh;
+  }
+
+  .studio-wordmark {
+    display: none;
+  }
+
+  .viewer-header h2 {
+    max-width: 60vw;
+  }
+}

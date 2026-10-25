@@ -1,12 +1,46 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b1219" />
-    <meta name="description" content="Turn everyday images into detailed 3D models with atomSphere." />
-    <title>atomSphere — Make something out of this world</title>
+    <meta name="theme-color" content="#111214" />
+    <meta name="description" content="Turn a sentence, one photo or three photos into a 3D model you can light, place on real terrain and keep." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="atomSphere" />
+    <meta property="og:title" content="atomSphere — Ideas in. 3D objects out." />
+    <meta property="og:description" content="Describe it, or show it in one photo or three. Get a 3D model you can light, place and keep." />
+    <meta property="og:url" content="%VITE_SITE_URL%/" />
+    <meta property="og:image" content="%VITE_SITE_URL%/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The atomSphere logo, a sphere with an engraved orbit, beside the line: Ideas in. 3D objects out." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      (() => {
+        try {
+          const stored = localStorage.getItem("atomsphere_theme");
+          const theme = stored === "light" || stored === "dark"
+            ? stored
+            : (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          document.documentElement.dataset.theme = theme;
+          const meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", theme === "light" ? "#f5f2ec" : "#111214");
+        } catch {
+          /* keep the default dark theme */
+        }
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <title>atomSphere — Ideas in. 3D objects out.</title>
   </head>
   <body>
     <div id="root"></div>

@@ -2,9 +2,9 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { apiRequest } from "./api";
 
 const MODEL_URL_API_URL = `${import.meta.env.VITE_API_URL}/requests/model-url`;
-const ModelViewer = lazy(() => import("./ModelViewer"));
+const StudioViewer = lazy(() => import("./studio/StudioViewer"));
 
-export default function Studio({ accessToken, jobId, prompt, onBack }) {
+export default function Studio({ accessToken, jobId, prompt, theme, onBack }) {
   const [model, setModel] = useState(null);
   const [error, setError] = useState(jobId ? "" : "No model was selected for Studio.");
   const [loading, setLoading] = useState(Boolean(jobId));
@@ -42,11 +42,12 @@ export default function Studio({ accessToken, jobId, prompt, onBack }) {
   if (model) {
     return (
       <Suspense fallback={<StudioStatus onBack={onBack} message="Preparing Studio…" />}>
-        <ModelViewer
+        <StudioViewer
           key={model.jobId}
           jobId={model.jobId}
           prompt={model.prompt}
           url={model.url}
+          theme={theme}
           onBack={onBack}
         />
       </Suspense>
@@ -66,7 +67,7 @@ export function StudioStatus({ onBack, message, isError = false }) {
   return (
     <main className="studio-page">
       <header className="studio-topbar">
-        <button className="studio-back" type="button" onClick={onBack}>← Back to workspace</button>
+        <button className="studio-back" type="button" onClick={onBack}>← Back to shelf</button>
         <span className="studio-wordmark">atomSphere STUDIO</span>
       </header>
       <section className="studio-status">

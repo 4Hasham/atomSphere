@@ -5,6 +5,9 @@ export const JOBS_API_URL = `${API_URL}/requests`;
 export const CREATE_JOB_URL = `${API_URL}/meteoclone-add-request`;
 export const DRAFT_STORAGE_KEY = "atomsphere_pending_draft";
 
+// Photos are shrunk in the browser (see prepareImage.js), so people can pick phone
+// originals; what is uploaded must still fit the create-job request.
+export const MAX_SOURCE_FILE_SIZE = 20 * 1024 * 1024;
 export const MAX_FILE_SIZE = 4 * 1024 * 1024;
 export const MAX_PROMPT_LENGTH = 500;
 export const MAX_NAME_LENGTH = 80;
@@ -135,10 +138,18 @@ export function fileToBase64(file) {
   });
 }
 
+/**
+ * Bytes one prepared photo may use. One photo gets room to spare; three share the
+ * 4 MB request. Both stay well inside sessionStorage for the sign-in redirect.
+ */
+export function photoBudget(mode) {
+  return mode === "multiview" ? 1.25 * 1024 * 1024 : 3 * 1024 * 1024;
+}
+
 /** Checks one picked file. Returns an error message, or "" when it is fine. */
 export function checkImage(file) {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) return "Please choose a JPG, PNG or WEBP image.";
-  if (file.size > MAX_FILE_SIZE) return "Each photo must be 4 MB or smaller.";
+  if (file.size > MAX_SOURCE_FILE_SIZE) return "Each photo must be 20 MB or smaller.";
   return "";
 }
 

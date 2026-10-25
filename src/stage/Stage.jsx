@@ -34,7 +34,11 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
   const [submitting, setSubmitting] = useState(false);
   const { jobs, loading, error: jobsError, reload } = useJobs(auth, refreshKey);
 
-  const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+  // Accepts a patch, or a function of the current draft for updates that land after an await.
+  const update = (patch) => setDraft((current) => ({
+    ...current,
+    ...(typeof patch === "function" ? patch(current) : patch),
+  }));
   const input = inputState(draft);
   const suggested = useMemo(() => suggestCategory(draft), [draft]);
   const stepIndex = STEPS.findIndex((item) => item.id === step);

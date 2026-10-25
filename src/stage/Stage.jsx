@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { apiRequest } from "../api";
 import Logo from "../brand/Logo";
+import { PlusIcon, ShelfIcon } from "../brand/icons";
 import ThemeToggle from "../brand/ThemeToggle";
 import AccountMenu from "./AccountMenu";
 import Cube from "./Cube";
@@ -148,12 +149,26 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
         {/* Navigation first, then settings, then the account menu (email + sign out). */}
         <div className="st-account">
           {auth.isAuthenticated && (step === "shelf" ? (
-            <button type="button" className="st-pill" onClick={() => go("input")}>New model</button>
+            <button
+              type="button"
+              className="st-round"
+              onClick={() => go("input")}
+              aria-label="New model"
+              title="New model"
+            >
+              <PlusIcon />
+            </button>
           ) : (
-            <button type="button" className="st-pill st-shelf-link" onClick={() => go("shelf")}>
-              {activeCount > 0 && <span className="st-tray-dot is-busy" aria-hidden="true" />}
-              Shelf
-              {jobs.length > 0 && <span className="st-pill-count">{jobs.length}</span>}
+            <button
+              type="button"
+              className="st-round st-shelf-link"
+              onClick={() => go("shelf")}
+              aria-label={`Shelf, ${jobs.length} ${jobs.length === 1 ? "model" : "models"}${activeCount > 0 ? `, ${activeCount} generating` : ""}`}
+              title="Shelf"
+            >
+              <ShelfIcon />
+              {jobs.length > 0 && <span className="st-badge-count" aria-hidden="true">{jobs.length > 99 ? "99+" : jobs.length}</span>}
+              {activeCount > 0 && <span className="st-tray-dot is-busy st-badge-busy" aria-hidden="true" />}
             </button>
           ))}
           <ThemeToggle theme={theme} onToggle={toggleTheme} />

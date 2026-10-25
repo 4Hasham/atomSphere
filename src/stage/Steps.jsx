@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { PhotoIcon, PhotosIcon, TextIcon } from "../brand/icons";
 import {
   INPUT_MODES,
   MAX_DESCRIPTION_LENGTH,
@@ -11,6 +12,9 @@ import {
   findPlan,
   nameFromFile,
 } from "./model";
+
+// Three ways in, not three steps: each mode gets its own icon.
+const MODE_ICONS = { prompt: TextIcon, single: PhotoIcon, multiview: PhotosIcon };
 
 function useObjectUrl(file) {
   const url = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
@@ -100,23 +104,26 @@ export function InputStep({ draft, update, status, onNext, setError }) {
 
   return (
     <>
-      <div role="tablist" aria-label="Input type" className="st-tabs">
-        {INPUT_MODES.map((mode) => (
-          <button
-            key={mode.id}
-            type="button"
-            role="tab"
-            aria-selected={draft.mode === mode.id}
-            className={draft.mode === mode.id ? "is-on" : ""}
-            onClick={() => {
-              setError("");
-              update({ mode: mode.id });
-            }}
-          >
-            <b>{mode.label}</b>
-            <span>{mode.hint}</span>
-          </button>
-        ))}
+      <div role="tablist" aria-label="Input type" className="st-tabs st-modes">
+        {INPUT_MODES.map((mode) => {
+          const Icon = MODE_ICONS[mode.id];
+          return (
+            <button
+              key={mode.id}
+              type="button"
+              role="tab"
+              aria-selected={draft.mode === mode.id}
+              className={draft.mode === mode.id ? "is-on" : ""}
+              onClick={() => {
+                setError("");
+                update({ mode: mode.id });
+              }}
+            >
+              <span className="st-mode-title"><Icon /><b>{mode.label}</b></span>
+              <span className="st-mode-hint">{mode.hint}</span>
+            </button>
+          );
+        })}
       </div>
 
       {draft.mode === "prompt" && (

@@ -63,3 +63,23 @@ export function PhotosIcon({ size = 18 }) {
     </svg>
   );
 }
+
+// Header navigation.
+
+export function ShelfIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M2 15h14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="3.25" y="8.25" width="5" height="6" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="9.75" y="4.25" width="5" height="10" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+export function PlusIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M9 3.5v11M3.5 9h11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}

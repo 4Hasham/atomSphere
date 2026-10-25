@@ -66,7 +66,7 @@ export function StudioStatus({ onBack, message, isError = false }) {
   return (
     <main className="studio-page">
       <header className="studio-topbar">
-        <button className="studio-back" type="button" onClick={onBack}>← Back to workspace</button>
+        <button className="studio-back" type="button" onClick={onBack}>← Back to shelf</button>
         <span className="studio-wordmark">atomSphere STUDIO</span>
       </header>
       <section className="studio-status">

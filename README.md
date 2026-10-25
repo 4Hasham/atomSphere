@@ -1,9 +1,30 @@
 # React + Vite
 
+## Creating a model (Stage)
+
+The home screen is a single stage with five steps shown in the header:
+**Input → Category → Payment → Account → Shelf**. A headline in the app's voice
+types in for each step over a slowly moving background (motion is skipped when
+the OS asks for reduced motion). Light and dark themes follow the OS until the
+person toggles them.
+
+- **Input:** exactly one of: a text description, one photo, or three photos
+  (front, left, back; 4 MB in total).
+- **Category:** `suggestCategory()` in `src/stage/model.js` is the hook-point
+  for automatic suggestions. Return a category value and the UI tags it
+  *Suggested*, preselects it and words the headline as a statement.
+- **Payment:** chooses Standard or Polished. No payment provider is wired in
+  yet; the step says it's free during preview.
+- **Account:** signed-out users are sent to Cognito; the draft is kept in
+  `sessionStorage` and submitted when they come back.
+- **Shelf:** the user's jobs, polled every 10 seconds.
+
+Code lives in `src/stage/`; Studio styles are in `src/studio/studio.css`.
+
 ## Studio
 
-Selecting **View model** opens the model in a new tab on the dedicated
-`/studio?job=<job-id>` page. Studio requests a fresh signed model URL when opened,
+Selecting a ready model on the shelf opens it in the same tab on the dedicated
+`/studio?job=<job-id>` page; **Back to shelf** returns to it. Studio requests a fresh signed model URL when opened,
 so reloading a Studio URL does not depend on a previously cached URL.
 
 Netlify serves this Vite app as a single-page application. The redirect rule in

@@ -1,23 +1,53 @@
-import { Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import Studio, { StudioStatus } from "./Studio";
+import useMediaQuery from "./useMediaQuery";
+import useTheme from "./useTheme";
 import "./App.css";
+
+const OrbScene = lazy(() => import("./OrbScene"));
 
 const API_URL = import.meta.env.VITE_API_URL;
 const JOBS_API_URL = `${API_URL}/requests`;
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MULTIVIEW_NAMES = ["front", "left", "back"];
+const DRAFT_STORAGE_KEY = "atomsphere_pending_draft";
+const STEPS = ["input", "category", "plan", "account"];
+
 const MODEL_CATEGORIES = [
-  { value: "building_structure", label: "Building / structure" },
-  { value: "mechanical_device", label: "Mechanical device" },
-  { value: "home_appliance", label: "Home utility / appliance" },
-  { value: "vehicle", label: "Vehicle" },
-  { value: "furniture_decor", label: "Furniture / decor" },
-  { value: "consumer_product", label: "Consumer product" },
-  { value: "character_creature", label: "Character / creature" },
-  { value: "nature_landscape", label: "Nature / landscape" },
-  { value: "other", label: "Other" },
+  { value: "building_structure", label: "Buildings", hint: "Architecture & structures" },
+  { value: "furniture_decor", label: "Furniture", hint: "Home & decor" },
+  { value: "vehicle", label: "Vehicles", hint: "Cars, bikes & more" },
+  { value: "consumer_product", label: "Products", hint: "Everyday objects" },
+  { value: "mechanical_device", label: "Machines", hint: "Robots & mechanisms" },
+  { value: "home_appliance", label: "Appliances", hint: "Home electronics" },
+  { value: "character_creature", label: "Characters", hint: "Creatures & people" },
+  { value: "nature_landscape", label: "Nature", hint: "Landscapes & plants" },
+  { value: "other", label: "Something else", hint: "Any other idea" },
 ];
+
+const PLANS = {
+  standard: {
+    id: "standard",
+    name: "Standard",
+    price: 2,
+    model: "hunyuan",
+    tagline: "For quick drafts",
+    description: "The fastest way to test an idea, silhouette or layout.",
+    points: ["Clean baseline mesh", "Great for iteration"],
+  },
+  polished: {
+    id: "polished",
+    name: "Polished",
+    price: 4,
+    model: "meshy",
+    tagline: "For production",
+    description: "Finer geometry and richer materials for final, production-quality assets.",
+    points: ["High-fidelity detail", "Takes a little longer"],
+  },
+};
+
 const ACTIVE_STATUSES = new Set(["uploading", "queued", "processing", "running"]);
 
 function statusGroup(status) {
@@ -25,333 +55,22 @@ function statusGroup(status) {
   if (ACTIVE_STATUSES.has(value)) return "active";
   if (["generated", "complete", "completed"].includes(value)) return "ready";
   if (["failed", "error"].includes(value)) return "failed";
-  return "all";
+  return "other";
 }
 
 function statusLabel(status) {
   const labels = {
-    uploading: "Uploading input",
+    uploading: "Uploading",
     queued: "Queued",
-    processing: "Generating model",
-    running: "Generating model",
+    processing: "Generating",
+    running: "Generating",
     generated: "Ready",
     complete: "Ready",
     completed: "Ready",
     failed: "Failed",
     error: "Failed",
   };
-  return labels[String(status || "unknown").toLowerCase()] || "Status unknown";
-}
-
-async function apiRequest(url, accessToken, options = {}) {
-  if (!url) {
-    throw new Error("This feature needs its API URL configured.");
-  }
-
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
-    },
-  });
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.error || `Request failed (${response.status})`);
-  }
-
-  return result;
-}
-
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      resolve(dataUrl.slice(dataUrl.indexOf(",") + 1));
-    };
-
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-function UploadForm({ getAccessToken, onJobCreated }) {
-  const [inputMode, setInputMode] = useState("single");
-  const [file, setFile] = useState(null);
-  const [viewFiles, setViewFiles] = useState({ front: null, left: null, back: null });
-  const [prompt, setPrompt] = useState("");
-  const [category, setCategory] = useState("");
-  const [message, setMessage] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  function handleFileChange(event) {
-    setFile(event.target.files?.[0] ?? null);
-    setMessage(null);
-  }
-
-  function handleViewFileChange(view, event) {
-    setViewFiles((current) => ({ ...current, [view]: event.target.files?.[0] ?? null }));
-    setMessage(null);
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-
-    if (!category) {
-      setMessage({ type: "error", text: "Choose a category for your model." });
-      return;
-    }
-
-    if (inputMode === "single" && !file) {
-      setMessage({
-        type: "error",
-        text: "Choose an image to get started.",
-      });
-      return;
-    }
-
-    if (inputMode === "multiview" && MULTIVIEW_NAMES.some((view) => !viewFiles[view])) {
-      setMessage({ type: "error", text: "Add front, left, and back images for multiview generation." });
-      return;
-    }
-
-    if (inputMode === "prompt" && !prompt.trim()) {
-      setMessage({
-        type: "error",
-        text: "Describe your model to get started.",
-      });
-      return;
-    }
-
-    const uploadSize = inputMode === "single"
-      ? file?.size || 0
-      : inputMode === "multiview"
-        ? MULTIVIEW_NAMES.reduce((total, view) => total + (viewFiles[view]?.size || 0), 0)
-        : 0;
-    if (uploadSize > MAX_FILE_SIZE) {
-      setMessage({ type: "error", text: "Images must total 4 MiB or less per request." });
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-      setMessage({
-        type: "loading",
-        text: inputMode === "single"
-          ? "Uploading your image…"
-          : inputMode === "multiview"
-            ? "Uploading your views…"
-            : "Sending your description…",
-      });
-
-      const fileBase64 = inputMode === "single" && file ? await fileToBase64(file) : undefined;
-      const views = {};
-      if (inputMode === "multiview") {
-        for (const view of MULTIVIEW_NAMES) {
-          views[view] = {
-            contentType: viewFiles[view].type,
-            fileBase64: await fileToBase64(viewFiles[view]),
-          };
-        }
-      }
-      const accessToken = await getAccessToken();
-      const response = await fetch(`${API_URL}/meteoclone-add-request`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          inputMode,
-          category,
-          prompt: inputMode === "prompt" ? prompt.trim() : "",
-          ...(inputMode === "single" && file && {
-            contentType: file.type,
-            fileBase64,
-          }),
-          ...(inputMode === "multiview" && { views }),
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || `Request failed (${response.status})`);
-      }
-
-      setMessage({
-        type: "success",
-        text: "Your request is in the pipeline.",
-      });
-      onJobCreated();
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: error instanceof Error ? error.message : "Something went wrong. Please try again.",
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  }
-
-  return (
-    <form className="upload-form" onSubmit={handleSubmit}>
-      <div className="form-heading">
-        <span className="step-label">01 <span>—</span> YOUR INPUT</span>
-        <h2>Bring your idea to life.</h2>
-        <p>Choose one way to get started: an image or a written description.</p>
-      </div>
-
-      <div className="field-group category-field">
-        <label className="field-label" htmlFor="model-category">What are you creating?</label>
-        <select
-          id="model-category"
-          className="category-select"
-          value={category}
-          onChange={(event) => setCategory(event.target.value)}
-          required
-        >
-          <option value="" disabled>Select a category</option>
-          {MODEL_CATEGORIES.map((option) => (
-            <option value={option.value} key={option.value}>{option.label}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="input-mode" role="group" aria-label="Choose your input type">
-        <button
-          className={`mode-button${inputMode === "single" ? " active" : ""}`}
-          type="button"
-          aria-pressed={inputMode === "single"}
-          onClick={() => {
-            setInputMode("single");
-            setMessage(null);
-          }}
-        >
-          Single image
-        </button>
-        <button
-          className={`mode-button${inputMode === "multiview" ? " active" : ""}`}
-          type="button"
-          aria-pressed={inputMode === "multiview"}
-          onClick={() => {
-            setInputMode("multiview");
-            setMessage(null);
-          }}
-        >
-          Multi-view
-        </button>
-        <button
-          className={`mode-button${inputMode === "prompt" ? " active" : ""}`}
-          type="button"
-          aria-pressed={inputMode === "prompt"}
-          onClick={() => {
-            setInputMode("prompt");
-            setMessage(null);
-          }}
-        >
-          <span aria-hidden="true">Aa</span> Text prompt
-        </button>
-      </div>
-
-      {inputMode === "single" ? (
-        <div className="field-group">
-          <label className="field-label" htmlFor="image-upload">
-            Your image <span>JPG, PNG, or WEBP · up to 4 MiB</span>
-          </label>
-          <label className={`upload-zone${file ? " has-file" : ""}`} htmlFor="image-upload">
-            <input
-              id="image-upload"
-              className="visually-hidden"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleFileChange}
-              required
-            />
-            <span className="upload-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 15.5v3A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-3" />
-              </svg>
-            </span>
-            <span className="upload-copy">
-              <strong>{file ? file.name : "Drop your image here"}</strong>
-              <span>
-                {file
-                  ? `${(file.size / (1024 * 1024)).toFixed(2)} MiB · Choose another`
-                  : "or click to browse files"}
-              </span>
-            </span>
-            <span className="browse-button">{file ? "Replace" : "Browse"}</span>
-          </label>
-        </div>
-      ) : inputMode === "multiview" ? (
-        <div className="field-group">
-          <label className="field-label">
-            Reference views <span>Front, left, and back · combined 4 MiB max</span>
-          </label>
-          <div className="multiview-inputs">
-            {MULTIVIEW_NAMES.map((view) => {
-              const viewFile = viewFiles[view];
-              return (
-                <label className={`view-upload${viewFile ? " has-file" : ""}`} htmlFor={`view-${view}`} key={view}>
-                  <input
-                    id={`view-${view}`}
-                    className="visually-hidden"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(event) => handleViewFileChange(view, event)}
-                    required
-                  />
-                  <span className="view-name">{view}</span>
-                  <strong>{viewFile?.name || "Choose image"}</strong>
-                  <span className="view-size">
-                    {viewFile ? `${(viewFile.size / (1024 * 1024)).toFixed(2)} MiB` : "JPG · PNG · WEBP"}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        <div className="field-group">
-          <label className="field-label" htmlFor="model-prompt">
-            Describe your 3D model
-          </label>
-          <textarea
-            id="model-prompt"
-            className="prompt-input"
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            placeholder="A small ceramic house with a mossy green roof…"
-            rows={5}
-            required
-          />
-        </div>
-      )}
-
-      <button className="submit-button" type="submit" disabled={isUploading}>
-        <span>{isUploading ? "Preparing your model…" : "Generate my 3D model"}</span>
-        {!isUploading && <span aria-hidden="true">↗</span>}
-        {isUploading && <span className="button-spinner" aria-hidden="true" />}
-      </button>
-
-      {message && (
-        <p className={`form-message ${message.type}`} role={message.type === "error" ? "alert" : "status"}>
-          {message.text}
-        </p>
-      )}
-
-      <p className="form-footnote">
-        {inputMode === "multiview"
-          ? "Three reference angles help preserve the shape around the whole model."
-          : "Only your selected input is used to generate your model."}
-      </p>
-    </form>
-  );
+  return labels[String(status || "unknown").toLowerCase()] || "Processing";
 }
 
 function normalizeJobs(result) {
@@ -364,23 +83,766 @@ function normalizeJobs(result) {
   }));
 }
 
-function RequestHistory({ accessToken, refreshKey, onViewModel }) {
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      resolve(dataUrl.slice(dataUrl.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function categoryLabel(value) {
+  return MODEL_CATEGORIES.find((category) => category.value === value)?.label || "3D asset";
+}
+
+function useObjectUrl(file) {
+  const url = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+
+  useEffect(() => {
+    if (!url) return undefined;
+    return () => URL.revokeObjectURL(url);
+  }, [url]);
+
+  return url;
+}
+
+function photoLabel(index, count) {
+  if (count === 1) return "Reference";
+  if (count === 3) return MULTIVIEW_NAMES[index].replace(/^./, (letter) => letter.toUpperCase());
+  return `Photo ${index + 1}`;
+}
+
+function PhotoThumb({ file, label, onRemove }) {
+  const preview = useObjectUrl(file);
+
+  return (
+    <div className="photo-thumb">
+      {preview ? <img src={preview} alt="" /> : <span className="photo-thumb-fallback" />}
+      <span className="photo-thumb-label">{label}</span>
+      <button
+        type="button"
+        className="photo-remove"
+        aria-label={`Remove ${label.toLowerCase()}`}
+        onClick={onRemove}
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M12 2v3M12 19v3M2 12h3M19 12h3"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.6 8.6 0 1 0 20.5 14.2Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function OrbStage({ theme }) {
+  return (
+    <aside className="orb-stage" aria-hidden="true">
+      <div className="orb-glow" />
+      <Suspense fallback={null}>
+        <OrbScene theme={theme} />
+      </Suspense>
+      <div className="orb-caption">
+        <span className="mono">WEBGL · LIVE</span>
+        <span className="orb-caption-line" />
+        <span>Move your pointer to orbit</span>
+      </div>
+    </aside>
+  );
+}
+
+function CreateView({ auth, theme, onJobCreated, onNavigateLibrary }) {
+  const isWelcomeWide = useMediaQuery("(min-width: 1024px)");
+  const isFlowWide = useMediaQuery("(min-width: 1280px)");
+  const [step, setStep] = useState("welcome");
+  const [prompt, setPrompt] = useState("");
+  const [photos, setPhotos] = useState([]);
+  const [category, setCategory] = useState("");
+  const [plan, setPlan] = useState("standard");
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [dragging, setDragging] = useState(false);
+
+  const stepIndex = STEPS.indexOf(step);
+  const photoCount = photos.length;
+  const totalPhotoBytes = photos.reduce((total, file) => total + file.size, 0);
+  const photosValid = photoCount === 0 || photoCount === 1 || photoCount === 3;
+  const photoBytesValid = photoCount < 3 || totalPhotoBytes <= MAX_FILE_SIZE;
+  const hasInput = Boolean(prompt.trim()) || photoCount > 0;
+  const inputReady = hasInput && photosValid && photoBytesValid;
+  const selectedCategory = MODEL_CATEGORIES.find((item) => item.value === category);
+  const selectedPlan = PLANS[plan];
+  const email = auth.user?.profile?.email;
+  const inputMode = photoCount === 3 ? "multiview" : photoCount === 1 ? "single" : "prompt";
+
+  const inputSummary = photoCount === 3
+    ? "3 angles"
+    : photoCount === 1
+      ? "1 reference photo"
+      : "Text description";
+  const fullInputSummary = prompt.trim() && photoCount > 0
+    ? `${inputSummary} + description`
+    : inputSummary;
+
+  function goTo(nextStep) {
+    setStep(nextStep);
+    setErrorMessage("");
+    setSuccessMessage("");
+  }
+
+  function goBack() {
+    if (step === "input") {
+      goTo("welcome");
+      return;
+    }
+    const index = STEPS.indexOf(step);
+    goTo(STEPS[Math.max(0, index - 1)]);
+  }
+
+  function goNext() {
+    if (!canContinue) return;
+    if (step === "input") goTo("category");
+    else if (step === "category") goTo("plan");
+    else if (step === "plan") goTo("account");
+  }
+
+  function addPhotos(fileList) {
+    const incoming = Array.from(fileList || []);
+    if (!incoming.length) return;
+
+    const room = 3 - photos.length;
+    if (room <= 0) {
+      setErrorMessage("You can add up to three photos. Remove one to add another.");
+      return;
+    }
+
+    let localError = "";
+    const accepted = [];
+    for (const file of incoming) {
+      if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
+        localError = "Please choose JPG, PNG or WEBP images.";
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        localError = "Each photo must be 4 MB or smaller.";
+        continue;
+      }
+      accepted.push(file);
+    }
+
+    if (!accepted.length) {
+      setErrorMessage(localError || "Those files could not be added.");
+      return;
+    }
+
+    if (accepted.length > room) {
+      localError = "Only the first three photos were added.";
+    }
+
+    setPhotos([...photos, ...accepted].slice(0, 3));
+    setErrorMessage(localError);
+    setSuccessMessage("");
+  }
+
+  function removePhoto(index) {
+    setPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setErrorMessage("");
+  }
+
+  async function handleLaunch() {
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    if (!inputReady) {
+      goTo("input");
+      setErrorMessage("Add a photo or describe your object first.");
+      return;
+    }
+
+    if (!category) {
+      goTo("category");
+      setErrorMessage("Choose a category first.");
+      return;
+    }
+
+    const selectedModel = selectedPlan.model;
+
+    // Not signed in: save the draft, sign in, then auto-submit on return.
+    if (!auth.isAuthenticated) {
+      try {
+        setSubmitting(true);
+        const draft = {
+          inputMode,
+          model: selectedModel,
+          plan,
+          category,
+          prompt: prompt.trim(),
+        };
+
+        if (inputMode === "single") {
+          draft.singleFile = {
+            name: photos[0].name,
+            type: photos[0].type,
+            base64: await fileToBase64(photos[0]),
+          };
+        } else if (inputMode === "multiview") {
+          draft.views = {};
+          for (let index = 0; index < MULTIVIEW_NAMES.length; index += 1) {
+            draft.views[MULTIVIEW_NAMES[index]] = {
+              type: photos[index].type,
+              base64: await fileToBase64(photos[index]),
+            };
+          }
+        }
+
+        sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+        await auth.signinRedirect();
+      } catch {
+        setErrorMessage("Could not start sign in. Please try again.");
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const accessToken = auth.user?.access_token;
+      if (!accessToken) {
+        throw new Error("Your session expired. Please sign in again.");
+      }
+
+      let fileBase64;
+      const viewsPayload = {};
+      if (inputMode === "single") {
+        fileBase64 = await fileToBase64(photos[0]);
+      } else if (inputMode === "multiview") {
+        for (let index = 0; index < MULTIVIEW_NAMES.length; index += 1) {
+          viewsPayload[MULTIVIEW_NAMES[index]] = {
+            contentType: photos[index].type,
+            fileBase64: await fileToBase64(photos[index]),
+          };
+        }
+      }
+
+      const requestBody = {
+        inputMode,
+        model: selectedModel,
+        category,
+        prompt: prompt.trim(),
+        ...(inputMode === "single" && {
+          contentType: photos[0].type,
+          fileBase64,
+        }),
+        ...(inputMode === "multiview" && { views: viewsPayload }),
+      };
+
+      const response = await fetch(`${API_URL}/meteoclone-add-request`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || `Request failed (${response.status})`);
+      }
+
+      setSuccessMessage("Generation started — opening your library…");
+      window.setTimeout(() => {
+        onJobCreated();
+        onNavigateLibrary();
+      }, 1000);
+    } catch (error) {
+      setErrorMessage(error.message || "Couldn't start generation. Please try again.");
+      setSubmitting(false);
+    }
+  }
+
+  const canContinue = step === "input"
+    ? inputReady
+    : step === "category"
+      ? Boolean(category)
+      : true;
+
+  let footerHint = "";
+  if (step === "input") {
+    if (photoCount === 2) footerHint = "Add one more angle or remove a photo.";
+    else if (!photoBytesValid) footerHint = "The three photos must total 4 MB or less.";
+    else if (!hasInput) footerHint = "Add a photo or a few words to continue.";
+    else footerHint = "You can refine the details as you go.";
+  } else if (step === "category") {
+    footerHint = category ? "This helps tune the shape." : "Pick the closest match to continue.";
+  } else if (step === "plan") {
+    footerHint = "You can change this before generating.";
+  } else if (step === "account") {
+    footerHint = auth.isAuthenticated ? "Generation starts right away." : "Sign-in only takes a moment.";
+  }
+
+  if (step === "welcome") {
+    return (
+      <section className="stage welcome-stage">
+        <div className="welcome-copy">
+          <span className="eyebrow">
+            <span className="eyebrow-dot" />
+            atomSphere · 3D asset studio
+          </span>
+          <h1 className="welcome-title">
+            Ideas in.
+            <span>3D objects out.</span>
+          </h1>
+          <p className="welcome-lede">
+            Describe something in a sentence or add a reference photo. atomSphere turns it into a
+            game-ready 3D model you can orbit, refine and keep — no 3D software required.
+          </p>
+          <div className="welcome-actions">
+            <button
+              className="primary-btn primary-btn-lg"
+              type="button"
+              onClick={() => goTo("input")}
+            >
+              Start creating
+              <span className="btn-arrow" aria-hidden="true">→</span>
+            </button>
+            <span className="welcome-note">Free while in preview</span>
+          </div>
+          <div className="welcome-steps" aria-label="How it works">
+            <div className="welcome-step">
+              <span className="welcome-step-num">01</span>
+              <strong>Describe or show</strong>
+              <span>Text, photos, or both</span>
+            </div>
+            <div className="welcome-step">
+              <span className="welcome-step-num">02</span>
+              <strong>Pick a category</strong>
+              <span>Helps shape the model</span>
+            </div>
+            <div className="welcome-step">
+              <span className="welcome-step-num">03</span>
+              <strong>Generate</strong>
+              <span>Opens in your library</span>
+            </div>
+          </div>
+        </div>
+        {isWelcomeWide && <OrbStage theme={theme} />}
+      </section>
+    );
+  }
+
+  return (
+    <section className="stage flow-stage">
+      <div className="wizard">
+        <div className="wizard-top">
+          <button className="back-link" type="button" onClick={goBack}>
+            <span aria-hidden="true">←</span> Back
+          </button>
+          <span className="wizard-count">{stepIndex + 1} / {STEPS.length}</span>
+        </div>
+
+        <div className="wizard-progress" aria-hidden="true">
+          {STEPS.map((item, index) => (
+            <span
+              key={item}
+              className={`progress-seg ${index < stepIndex ? "is-done" : ""} ${index === stepIndex ? "is-current" : ""}`}
+            />
+          ))}
+        </div>
+
+        <div className="wizard-body">
+          {step === "input" && (
+            <div className="step" key="input">
+              <div className="step-head">
+                <h1 className="step-title">What are we making?</h1>
+                <p className="step-lede">
+                  Describe your idea, add up to three reference photos, or use both. One photo is
+                  enough; three angles give the most accurate model.
+                </p>
+              </div>
+
+              <div className="step-content input-fields">
+                <div className="field">
+                  <div className="field-top">
+                    <label className="field-title" htmlFor="prompt-input">Describe it</label>
+                    <span className="field-optional">Optional if you add photos</span>
+                  </div>
+                  <div className="prompt-box">
+                    <textarea
+                      id="prompt-input"
+                      rows={3}
+                      value={prompt}
+                      onChange={(event) => {
+                        setPrompt(event.target.value);
+                        setErrorMessage("");
+                        setSuccessMessage("");
+                      }}
+                      placeholder="A mid-century walnut lounge chair with cream leather cushions…"
+                    />
+                    <div className="prompt-meta">
+                      <span>Shape, material, style — a sentence is plenty.</span>
+                      <span>{prompt.length}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  className={`field photo-field ${dragging ? "is-dragging" : ""}`}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setDragging(false);
+                    addPhotos(event.dataTransfer.files);
+                  }}
+                >
+                  <div className="field-top">
+                    <span className="field-title">Reference photos</span>
+                    <span className="field-optional">Optional if you describe it</span>
+                  </div>
+
+                  <input
+                    id="reference-photos"
+                    className="sr-only"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={(event) => {
+                      addPhotos(event.target.files);
+                      event.target.value = "";
+                    }}
+                  />
+
+                  {photoCount === 0 ? (
+                    <label className="photo-drop" htmlFor="reference-photos">
+                      <span className="photo-drop-icon" aria-hidden="true">＋</span>
+                      <span className="photo-drop-text">
+                        <strong>Add reference photos</strong>
+                        <span>Drop them here or browse · JPG, PNG or WEBP</span>
+                      </span>
+                    </label>
+                  ) : (
+                    <div className="photo-thumbs">
+                      {photos.map((file, index) => (
+                        <PhotoThumb
+                          key={`${file.name}-${file.lastModified}-${index}`}
+                          file={file}
+                          label={photoLabel(index, photoCount)}
+                          onRemove={() => removePhoto(index)}
+                        />
+                      ))}
+                      {photoCount < 3 && (
+                        <label className="photo-add" htmlFor="reference-photos">
+                          <span aria-hidden="true">＋</span>
+                          <strong>{photoCount === 1 ? "Add an angle" : "Add the last angle"}</strong>
+                        </label>
+                      )}
+                    </div>
+                  )}
+
+                  <p className={`field-help ${photoCount === 2 || !photoBytesValid ? "is-warning" : ""}`}>
+                    {photoCount === 2
+                      ? "Add the third angle, or remove one photo — we use one or all three."
+                      : !photoBytesValid
+                        ? "All three photos together must be 4 MB or smaller. Use smaller images or remove one."
+                        : photoCount === 3
+                          ? "Front, left and back — this gives the most accurate result."
+                          : photoCount === 1
+                            ? "One photo works. Add the other two angles for more accuracy."
+                            : "One photo is enough. For best results, add front, left and back in that order."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === "category" && (
+            <div className="step" key="category">
+              <div className="step-head">
+                <h1 className="step-title">What kind of object is it?</h1>
+                <p className="step-lede">
+                  Pick the closest category. It helps atomSphere tune the geometry — automatic
+                  detection is coming soon.
+                </p>
+              </div>
+
+              <div className="step-content">
+                <div className="category-grid" role="radiogroup" aria-label="Object category">
+                  {MODEL_CATEGORIES.map((item) => {
+                    const selected = category === item.value;
+                    return (
+                      <button
+                        key={item.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        className={`category-card ${selected ? "is-selected" : ""}`}
+                        onClick={() => {
+                          setCategory(item.value);
+                          setErrorMessage("");
+                        }}
+                      >
+                        <span className="category-label">{item.label}</span>
+                        <span className="category-hint">{item.hint}</span>
+                        {selected && <span className="category-check" aria-hidden="true">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === "plan" && (
+            <div className="step" key="plan">
+              <div className="step-head">
+                <h1 className="step-title">Choose your finish.</h1>
+                <p className="step-lede">
+                  Standard is best for quick tests and drafts. Polished is for final,
+                  production-quality assets.
+                </p>
+              </div>
+
+              <div className="step-content plan-content">
+                <div className="plan-grid" role="radiogroup" aria-label="Generation plan">
+                  {Object.values(PLANS).map((item) => {
+                    const selected = plan === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        className={`plan-card ${selected ? "is-selected" : ""}`}
+                        onClick={() => setPlan(item.id)}
+                      >
+                        <span className="plan-top">
+                          <span className="plan-name">{item.name}</span>
+                          <span className="plan-price">${item.price}</span>
+                        </span>
+                        <span className="plan-tag">{item.tagline}</span>
+                        <span className="plan-desc">{item.description}</span>
+                        <span className="plan-points">
+                          {item.points.map((point) => (
+                            <span key={point} className="plan-point">{point}</span>
+                          ))}
+                        </span>
+                        <span className="plan-select">{selected ? "Selected" : "Select"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="plan-note">
+                  Free during preview — you won't be charged today. Pricing applies at launch.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {step === "account" && (
+            <div className="step" key="account">
+              <div className="step-head">
+                <h1 className="step-title">
+                  {auth.isAuthenticated ? "Ready when you are." : "Save it to your library."}
+                </h1>
+                <p className="step-lede">
+                  {auth.isAuthenticated
+                    ? `Signed in as ${email || "your account"}. We'll start your model and open your library.`
+                    : "Sign in so your model is easy to find, reopen and manage later. We only ask for your email — no profiles, no marketing."}
+                </p>
+              </div>
+
+              <div className="step-content account-step">
+                {!auth.isAuthenticated && (
+                  <ul className="trust-list">
+                    <li className="trust-item">
+                      <span className="trust-icon" aria-hidden="true">✓</span>
+                      <span className="trust-copy">
+                        <strong>Just your email</strong>
+                        <span className="trust-text">Cognito handles sign-in. We use it only for your account.</span>
+                      </span>
+                    </li>
+                    <li className="trust-item">
+                      <span className="trust-icon" aria-hidden="true">✓</span>
+                      <span className="trust-copy">
+                        <strong>Private to you</strong>
+                        <span className="trust-text">Your models stay in your own library.</span>
+                      </span>
+                    </li>
+                    <li className="trust-item">
+                      <span className="trust-icon" aria-hidden="true">✓</span>
+                      <span className="trust-copy">
+                        <strong>Come back anytime</strong>
+                        <span className="trust-text">Reopen and organize your work.</span>
+                      </span>
+                    </li>
+                  </ul>
+                )}
+
+                <div className="summary-card">
+                  <div className="summary-item">
+                    <span className="summary-label">Input</span>
+                    <span className="summary-value">{fullInputSummary}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="summary-label">Category</span>
+                    <span className="summary-value">{selectedCategory?.label}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="summary-label">Plan</span>
+                    <span className="summary-value">{selectedPlan.name} · ${selectedPlan.price}</span>
+                  </div>
+                </div>
+
+                <p className="signin-note">
+                  {auth.isAuthenticated
+                    ? "Generation usually takes a few minutes. You can leave the library and come back."
+                    : "After signing in, generation starts automatically and opens your library."}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {errorMessage && <p className="wizard-alert" role="alert">{errorMessage}</p>}
+        {successMessage && <p className="wizard-success" role="status">{successMessage}</p>}
+
+        <footer className="wizard-footer">
+          <span className="wizard-hint">{footerHint}</span>
+          {step === "account" ? (
+            <button
+              className="primary-btn"
+              type="button"
+              onClick={handleLaunch}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <span className="spinner" aria-hidden="true" />
+                  Preparing…
+                </>
+              ) : (
+                <>
+                  {auth.isAuthenticated ? "Generate my model" : "Sign in & generate"}
+                  <span className="btn-arrow" aria-hidden="true">→</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              className="primary-btn"
+              type="button"
+              onClick={goNext}
+              disabled={!canContinue}
+            >
+              {step === "plan"
+                ? `Continue with ${selectedPlan.name} · $${selectedPlan.price}`
+                : "Continue"}
+              <span className="btn-arrow" aria-hidden="true">→</span>
+            </button>
+          )}
+        </footer>
+      </div>
+
+      {isFlowWide && <OrbStage theme={theme} />}
+    </section>
+  );
+}
+
+function JobCard({ job, onOpen }) {
+  const status = String(job.status || "unknown").toLowerCase();
+  const group = statusGroup(status);
+  const title = job.prompt || job.input_key?.split("/").at(-1) || "Image-based 3D model";
+  const date = job.createdAt
+    ? new Date(job.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+    : "";
+
+  return (
+    <article className="job-card">
+      <div className="job-top">
+        <span className={`status-pill status-${status}`}>
+          <span className="status-dot" aria-hidden="true" />
+          {statusLabel(status)}
+        </span>
+        {date && <span className="job-date">{date}</span>}
+      </div>
+
+      <h2 className="job-title">{title}</h2>
+      <p className="job-category">{categoryLabel(job.category)}</p>
+
+      <div className="job-bottom">
+        {group === "ready" ? (
+          <button className="job-open" type="button" onClick={() => onOpen(job)}>
+            Open in Studio
+            <span aria-hidden="true">→</span>
+          </button>
+        ) : group === "active" ? (
+          <span className="job-progress">
+            <span className="progress-line" aria-hidden="true"><span /></span>
+            <span>This updates automatically.</span>
+          </span>
+        ) : (
+          <span className="job-failed">Generation did not finish.</span>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function LibraryView({ auth, refreshKey, onViewModel, onNavigateCreate }) {
   const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(auth.isAuthenticated));
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [manualRefresh, setManualRefresh] = useState(0);
-  const [pipelineOpen, setPipelineOpen] = useState(true);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     let active = true;
     let inFlight = false;
 
     async function loadJobs() {
-      if (inFlight) return;
+      if (!auth.isAuthenticated || inFlight) return;
       inFlight = true;
       try {
-        const result = await apiRequest(JOBS_API_URL, accessToken);
+        const response = await fetch(JOBS_API_URL, {
+          headers: {
+            Authorization: `Bearer ${auth.user?.access_token}`,
+          },
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || `Failed to fetch requests (${response.status})`);
+        }
         if (active) {
           setJobs(normalizeJobs(result));
           setError("");
@@ -394,157 +856,125 @@ function RequestHistory({ accessToken, refreshKey, onViewModel }) {
     }
 
     loadJobs();
-    const intervalId = window.setInterval(loadJobs, 15000);
+    const intervalId = window.setInterval(loadJobs, 10000);
     return () => {
       active = false;
       window.clearInterval(intervalId);
     };
-  }, [accessToken, manualRefresh, refreshKey]);
+  }, [auth.isAuthenticated, auth.user?.access_token, refreshKey, retryTick]);
 
-  const activeJobs = jobs
-    .filter((job) => statusGroup(job.status) === "active")
-    .sort((first, second) => new Date(second.createdAt || 0) - new Date(first.createdAt || 0));
-  const readyJobs = jobs.filter((job) => statusGroup(job.status) === "ready");
-  const failedJobs = jobs.filter((job) => statusGroup(job.status) === "failed");
-  const filteredJobs = jobs.filter((job) => filter === "all" || statusGroup(job.status) === filter);
-  const filters = [
-    { id: "all", label: "All", count: jobs.length },
-    { id: "active", label: "Active", count: activeJobs.length },
-    { id: "ready", label: "Ready", count: readyJobs.length },
-    { id: "failed", label: "Failed", count: failedJobs.length },
-  ];
+  const sortedJobs = useMemo(() => {
+    const rank = (job) => {
+      const group = statusGroup(job.status);
+      if (group === "active") return 0;
+      if (group === "ready") return 1;
+      return 2;
+    };
+
+    return [...jobs].sort((a, b) => {
+      const difference = rank(a) - rank(b);
+      if (difference !== 0) return difference;
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
+  }, [jobs]);
+
+  const activeCount = jobs.filter((job) => statusGroup(job.status) === "active").length;
+  const readyCount = jobs.filter((job) => statusGroup(job.status) === "ready").length;
+  const failedCount = jobs.filter((job) => statusGroup(job.status) === "failed").length;
+  const statusParts = [
+    activeCount > 0 ? `${activeCount} generating now` : "",
+    readyCount > 0 ? `${readyCount} ready` : "",
+    failedCount > 0 ? `${failedCount} failed` : "",
+  ].filter(Boolean);
+  const librarySummary = jobs.length === 0
+    ? "Everything you create will live here."
+    : statusParts.join(" · ") || `${jobs.length} saved model${jobs.length === 1 ? "" : "s"}`;
 
   return (
-    <>
-      {activeJobs.length > 0 && (
-        <aside className={`pipeline-panel${pipelineOpen ? "" : " is-collapsed"}`} aria-label="Active requests" aria-live="polite">
-          <div className="pipeline-heading">
-            <div className="pipeline-title-wrap">
-              <span className="pipeline-pulse" aria-hidden="true" />
-              <div>
-                <span className="pipeline-kicker">LIVE PIPELINE</span>
-                <strong>{activeJobs.length} {activeJobs.length === 1 ? "request" : "requests"} in progress</strong>
-              </div>
-            </div>
-            <button
-              className="pipeline-toggle"
-              type="button"
-              aria-expanded={pipelineOpen}
-              aria-label={pipelineOpen ? "Collapse active requests" : "Expand active requests"}
-              onClick={() => setPipelineOpen((open) => !open)}
-            >
-              {pipelineOpen ? "−" : "+"}
+    <section className="stage library-stage">
+      <div className="library-view">
+        <header className="library-head">
+          <div className="library-heading">
+            <span className="eyebrow">
+              <span className="eyebrow-dot" />
+              Library
+            </span>
+            <h1 className="library-title">
+              Your models
+              <span className="library-count">{jobs.length}</span>
+            </h1>
+            <p className="library-sub">{librarySummary}</p>
+          </div>
+
+          <button
+            className="primary-btn primary-btn-sm"
+            type="button"
+            onClick={onNavigateCreate}
+          >
+            New model
+            <span className="btn-arrow" aria-hidden="true">＋</span>
+          </button>
+        </header>
+
+        {error && (
+          <div className="library-alert" role="alert">
+            <span>{error}</span>
+            <button type="button" className="text-btn" onClick={() => setRetryTick((value) => value + 1)}>
+              Try again
             </button>
           </div>
-          {pipelineOpen && (
-            <div className="pipeline-list">
-              {activeJobs.slice(0, 4).map((job) => {
-                const status = String(job.status || "unknown").toLowerCase();
-                return (
-                  <article className="pipeline-item" key={job.jobId}>
-                    <div className="pipeline-item-top">
-                      <strong>{job.prompt || job.input_key?.split("/").at(-1) || "Image-based model"}</strong>
-                      <span className={`pipeline-status status-${status}`}>{statusLabel(status)}</span>
-                    </div>
-                    <span className="pipeline-id">ID · {job.jobId}</span>
-                    <div className={`pipeline-track stage-${status}`} aria-hidden="true">
-                      <span /><span /><span />
-                    </div>
-                  </article>
-                );
-              })}
-              {activeJobs.length > 4 && (
-                <span className="pipeline-more">+{activeJobs.length - 4} more active</span>
-              )}
+        )}
+
+        <div className="library-scroll">
+          {loading && (
+            <div className="job-grid" aria-label="Loading models">
+              {[0, 1, 2, 3, 4, 5].map((index) => (
+                <div className="job-card skeleton-card" key={index}>
+                  <span className="skeleton skeleton-line skeleton-short" />
+                  <span className="skeleton skeleton-line" />
+                  <span className="skeleton skeleton-line skeleton-medium" />
+                  <span className="skeleton skeleton-block" />
+                </div>
+              ))}
             </div>
           )}
-        </aside>
-      )}
 
-      <section className="requests-section" aria-labelledby="requests-title">
-        <div className="requests-heading">
-          <div>
-            <span className="eyebrow"><span className="eyebrow-dot" /> YOUR WORK</span>
-            <h2 id="requests-title">Request history</h2>
-          </div>
-          <button
-            className="refresh-requests"
-            type="button"
-            aria-label="Refresh requests"
-            title="Refresh requests"
-            onClick={() => setManualRefresh((value) => value + 1)}
-          >
-            <span aria-hidden="true">↻</span> Refresh
-          </button>
-        </div>
-
-        <div className="history-toolbar">
-          <div className="history-filters" role="group" aria-label="Filter request history">
-            {filters.map((item) => (
-              <button
-                className={`history-filter${filter === item.id ? " active" : ""}`}
-                key={item.id}
-                type="button"
-                aria-pressed={filter === item.id}
-                onClick={() => setFilter(item.id)}
-              >
-                {item.label}<span>{item.count}</span>
+          {!loading && !error && sortedJobs.length === 0 && (
+            <div className="library-empty">
+              <span className="brand-mark brand-mark-lg" aria-hidden="true" />
+              <h2>Your library is empty</h2>
+              <p>
+                Create your first model — you'll see it here while it generates, then open it in
+                Studio.
+              </p>
+              <button className="primary-btn" type="button" onClick={onNavigateCreate}>
+                Create a model
+                <span className="btn-arrow" aria-hidden="true">→</span>
               </button>
-            ))}
-          </div>
-          <span className="request-count">{filteredJobs.length} shown</span>
+            </div>
+          )}
+
+          {!loading && !error && sortedJobs.length > 0 && (
+            <div className="job-grid">
+              {sortedJobs.map((job) => (
+                <JobCard key={`${job.jobId}-${job.createdAt || ""}`} job={job} onOpen={onViewModel} />
+              ))}
+            </div>
+          )}
         </div>
-
-        {loading && <p className="requests-state">Loading your requests…</p>}
-        {!loading && error && <p className="requests-state requests-error" role="alert">{error}</p>}
-        {!loading && !error && filteredJobs.length === 0 && (
-          <p className="requests-state">
-            {jobs.length === 0 ? "Your requests will appear here." : `No ${filter} requests yet.`}
-          </p>
-        )}
-
-        {filteredJobs.length > 0 && (
-          <div className="request-list">
-            {filteredJobs.map((job) => {
-              const status = String(job.status || "unknown").toLowerCase();
-              const canView = statusGroup(status) === "ready";
-              return (
-                <article className="request-row" key={`${job.jobId}-${job.createdAt || ""}`}>
-                  <div className="request-main">
-                    <strong className="request-description">
-                      {job.prompt || job.input_key?.split("/").at(-1) || "Image-based model"}
-                    </strong>
-                    <span className="request-id">ID · {job.jobId}</span>
-                    <time className="request-date" dateTime={job.createdAt || undefined}>
-                      {job.createdAt ? new Date(job.createdAt).toLocaleString() : "Date unavailable"}
-                    </time>
-                  </div>
-                  <div className="request-actions">
-                    <span className={`status-pill status-${status}`}>{statusLabel(status)}</span>
-                    {canView && (
-                      <button
-                        className="view-model-button"
-                        onClick={() => onViewModel(job)}
-                      >
-                        View model <span aria-hidden="true">↗</span>
-                      </button>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
-    </>
+      </div>
+    </section>
   );
 }
 
 function App() {
   const auth = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [currentView, setCurrentView] = useState("create");
   const [refreshKey, setRefreshKey] = useState(0);
   const [pathname, setPathname] = useState(window.location.pathname);
   const [studioError, setStudioError] = useState("");
+  const pendingSubmissionRef = useRef(false);
 
   useEffect(() => {
     function handlePopState() {
@@ -557,8 +987,63 @@ function App() {
   useEffect(() => {
     document.title = pathname === "/studio"
       ? "Studio — atomSphere"
-      : "atomSphere — Make something out of this world";
-  }, [pathname]);
+      : currentView === "dashboard"
+        ? "Library — atomSphere"
+        : "atomSphere — Ideas in. 3D objects out.";
+  }, [pathname, currentView]);
+
+  // Auto-submit a draft that was saved before the Cognito redirect.
+  useEffect(() => {
+    if (auth.isAuthenticated && !pendingSubmissionRef.current) {
+      const rawDraft = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+      if (rawDraft) {
+        pendingSubmissionRef.current = true;
+        try {
+          const draft = JSON.parse(rawDraft);
+          sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+
+          const submitPendingDraft = async () => {
+            const accessToken = auth.user?.access_token;
+            if (!accessToken) return;
+
+            const requestBody = {
+              inputMode: draft.inputMode,
+              model: draft.model,
+              category: draft.category,
+              prompt: draft.prompt || "",
+              ...(draft.singleFile && {
+                contentType: draft.singleFile.type,
+                fileBase64: draft.singleFile.base64,
+              }),
+              ...(draft.views && {
+                views: {
+                  front: { contentType: draft.views.front.type, fileBase64: draft.views.front.base64 },
+                  left: { contentType: draft.views.left.type, fileBase64: draft.views.left.base64 },
+                  back: { contentType: draft.views.back.type, fileBase64: draft.views.back.base64 },
+                },
+              }),
+            };
+
+            await fetch(`${API_URL}/meteoclone-add-request`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify(requestBody),
+            });
+
+            setRefreshKey((key) => key + 1);
+            setCurrentView("dashboard");
+          };
+
+          submitPendingDraft().catch((error) => console.error("Failed to auto-submit pending draft:", error));
+        } catch {
+          sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+        }
+      }
+    }
+  }, [auth.isAuthenticated, auth.user?.access_token]);
 
   function openModel(job) {
     setStudioError("");
@@ -581,36 +1066,10 @@ function App() {
 
   if (auth.isLoading) {
     return (
-      <main className="auth-screen">
-        <div className="loading-indicator" aria-label="Loading your account" />
-        <p>Checking your skies…</p>
-      </main>
-    );
-  }
-
-  if (auth.error) {
-    return (
-      <main className="auth-screen">
-        <p className="auth-error">We couldn’t sign you in: {auth.error.message}</p>
-        <button className="text-button" onClick={() => auth.signinRedirect()}>
-          Try again
-        </button>
-      </main>
-    );
-  }
-
-  if (!auth.isAuthenticated) {
-    return (
-      <main className="auth-screen">
-        <div className="login-card">
-          <Brand />
-          <span className="eyebrow">A NEW KIND OF FORECAST</span>
-          <h1>Your imagination,<br />in another dimension.</h1>
-          <p>Turn an image or a written idea into a detailed 3D model with a little help from the cloud.</p>
-          <button className="submit-button" onClick={() => auth.signinRedirect()}>
-            <span>Sign in to get started</span><span aria-hidden="true">↗</span>
-          </button>
-        </div>
+      <main className="boot-screen">
+        <span className="brand-mark brand-mark-lg" aria-hidden="true" />
+        <p className="boot-text">Connecting to atomSphere…</p>
+        <span className="boot-line" aria-hidden="true" />
       </main>
     );
   }
@@ -633,58 +1092,100 @@ function App() {
     );
   }
 
-  const email = auth.user?.profile.email;
+  const email = auth.user?.profile?.email;
 
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <Brand />
-        <div className="account-area">
-          <span className="account-email">{email}</span>
-          <button className="text-button" onClick={() => auth.removeUser()}>
-            Sign out
+    <div className="app-shell">
+      <header className="app-header">
+        <button
+          className="brand"
+          type="button"
+          onClick={() => setCurrentView("create")}
+          aria-label="atomSphere home"
+        >
+          <span className="brand-mark" aria-hidden="true" />
+          <span className="brand-text">atomSphere</span>
+        </button>
+
+        {auth.isAuthenticated && (
+          <nav className="nav-pill" aria-label="Workspace">
+            <button
+              type="button"
+              className={currentView === "create" ? "is-active" : ""}
+              aria-current={currentView === "create" ? "page" : undefined}
+              onClick={() => setCurrentView("create")}
+            >
+              Create
+            </button>
+            <button
+              type="button"
+              className={currentView === "dashboard" ? "is-active" : ""}
+              aria-current={currentView === "dashboard" ? "page" : undefined}
+              onClick={() => setCurrentView("dashboard")}
+            >
+              Library
+            </button>
+          </nav>
+        )}
+
+        <div className="header-account">
+          <button
+            className="icon-btn theme-btn"
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
           </button>
+
+          {auth.isAuthenticated ? (
+            <>
+              <span className="email-chip" title={email}>{email}</span>
+              <button
+                className="ghost-btn"
+                type="button"
+                onClick={() => {
+                  setCurrentView("create");
+                  auth.removeUser();
+                }}
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button className="ghost-btn accent" type="button" onClick={() => auth.signinRedirect()}>
+              Sign in
+            </button>
+          )}
         </div>
       </header>
 
-      <section className="workspace">
-        <div className="intro">
-          <span className="eyebrow"><span className="eyebrow-dot" /> YOUR CREATIVE WEATHER</span>
-          <h1>Make something<br /><span>out of this world.</span></h1>
-          <p>Start with an image or a written idea. Pick one and let the forecast unfold.</p>
-          <div className="forecast-note">
-            <span className="sun-mark" aria-hidden="true">✳</span>
-            <span><strong>Conditions are looking creative.</strong><br />Your next idea is just a few clicks away.</span>
+      <main className="app-main">
+        {studioError && (
+          <div className="toast" role="alert">
+            {studioError}
+            <button type="button" onClick={() => setStudioError("")} aria-label="Dismiss">✕</button>
           </div>
-        </div>
+        )}
 
-        <UploadForm
-          getAccessToken={() => auth.user?.access_token}
-          onJobCreated={() => setRefreshKey((value) => value + 1)}
-        />
-      </section>
-
-      <RequestHistory
-        accessToken={auth.user?.access_token}
-        refreshKey={refreshKey}
-        onViewModel={openModel}
-      />
-      {studioError && <p className="viewer-error" role="alert">{studioError}</p>}
-
-      <footer className="page-footer">
-        <span>atomSphere STUDIO</span>
-        <span>Good ideas are in the air.</span>
-      </footer>
-    </main>
-  );
-}
-
-function Brand() {
-  return (
-    <a className="brand" href="/" aria-label="atomSphere home">
-      <span className="brand-mark" aria-hidden="true">✳</span>
-      <span>atom<span>Sphere</span></span>
-    </a>
+        {currentView === "create" ? (
+          <CreateView
+            auth={auth}
+            theme={theme}
+            onJobCreated={() => setRefreshKey((key) => key + 1)}
+            onNavigateLibrary={() => setCurrentView("dashboard")}
+          />
+        ) : (
+          <LibraryView
+            auth={auth}
+            refreshKey={refreshKey}
+            onViewModel={openModel}
+            onNavigateCreate={() => setCurrentView("create")}
+          />
+        )}
+      </main>
+    </div>
   );
 }
 

@@ -94,20 +94,21 @@ export default function useTerrain() {
       setError("Enter a latitude from -85.051129 to 85.051129 and a longitude from -180 to 180.");
       setTerrain(null);
       setLoading(false);
-      return;
+      return false;
     }
 
     if (!MAPBOX_ACCESS_TOKEN) {
       setError("Configure VITE_MAPBOX_ACCESS_TOKEN to add a Mapbox terrain backdrop.");
       setTerrain(null);
       setLoading(false);
-      return;
+      return false;
     }
 
     setError("");
     setLoading(true);
     setTerrain(null);
     setLocation({ latitude: parsedLatitude, longitude: parsedLongitude });
+    return true;
   }
 
   function clearTerrain() {

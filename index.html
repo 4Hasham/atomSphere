@@ -1,12 +1,33 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b1219" />
-    <meta name="description" content="Turn everyday images into detailed 3D models with atomSphere." />
-    <title>atomSphere — Make something out of this world</title>
+    <meta name="theme-color" content="#07080a" />
+    <meta name="description" content="Turn everyday ideas and images into detailed 3D models with atomSphere." />
+    <script>
+      (() => {
+        try {
+          const stored = localStorage.getItem("atomsphere_theme");
+          const theme = stored === "light" || stored === "dark"
+            ? stored
+            : (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          document.documentElement.dataset.theme = theme;
+          const meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", theme === "light" ? "#f5f2ec" : "#07080a");
+        } catch {
+          /* keep the default dark theme */
+        }
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>atomSphere — Ideas in. 3D objects out.</title>
   </head>
   <body>
     <div id="root"></div>

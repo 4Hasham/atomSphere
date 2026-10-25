@@ -26,6 +26,17 @@ The displayed terrain tile uses zoom level 11. Elevation is decoded from
 Mapbox Terrain-RGB and scaled against the tile's real-world width at its
 latitude, with modest vertical exaggeration to keep hills visible.
 
+## Studio scene presets
+
+Use the **Scene presets** selector in Studio to change the scene's lighting,
+background, and atmosphere. Presets include sunny morning, thunderstorm (with
+animated rain and lightning), windy (with moving wind streaks), overcast, and
+golden hour. Select **Studio** to restore the original neutral lighting.
+
+The separate **Background** selector adds a procedural city scene with roads
+and buildings, a mountain scene with trees, or the original studio backdrop.
+A visible sun is framed in the scene and follows the camera as you orbit.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

@@ -1771,9 +1771,23 @@
   color: var(--text-muted);
 }
 
-.terrain-clear:hover {
+.terrain-clear:hover:not(:disabled) {
   background: var(--field-bg-hover);
   color: var(--text);
+}
+
+.scene-history {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.scene-history .terrain-clear {
+  grid-column: auto;
+}
+
+.scene-history .terrain-clear:disabled {
+  opacity: 0.45;
 }
 
 .terrain-error {

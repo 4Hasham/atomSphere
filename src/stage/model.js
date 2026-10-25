@@ -7,6 +7,8 @@ export const DRAFT_STORAGE_KEY = "atomsphere_pending_draft";
 
 export const MAX_FILE_SIZE = 4 * 1024 * 1024;
 export const MAX_PROMPT_LENGTH = 500;
+export const MAX_NAME_LENGTH = 80;
+export const MAX_DESCRIPTION_LENGTH = 500;
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const MULTIVIEW_NAMES = ["front", "left", "back"];
 
@@ -25,15 +27,15 @@ export const INPUT_MODES = [
 ];
 
 export const MODEL_CATEGORIES = [
-  { value: "building_structure", label: "Buildings", noun: "a building", hint: "Architecture & structures" },
-  { value: "furniture_decor", label: "Furniture", noun: "furniture", hint: "Home & decor" },
-  { value: "vehicle", label: "Vehicles", noun: "a vehicle", hint: "Cars, bikes & more" },
-  { value: "consumer_product", label: "Products", noun: "a product", hint: "Everyday objects" },
-  { value: "mechanical_device", label: "Machines", noun: "a machine", hint: "Robots & mechanisms" },
-  { value: "home_appliance", label: "Appliances", noun: "an appliance", hint: "Home electronics" },
-  { value: "character_creature", label: "Characters", noun: "a character", hint: "Creatures & people" },
-  { value: "nature_landscape", label: "Nature", noun: "something from nature", hint: "Landscapes & plants" },
-  { value: "other", label: "Something else", noun: "something new", hint: "Any other idea" },
+  { value: "building_structure", label: "Buildings", noun: "a building", item: "Building", hint: "Architecture & structures" },
+  { value: "furniture_decor", label: "Furniture", noun: "furniture", item: "Furniture piece", hint: "Home & decor" },
+  { value: "vehicle", label: "Vehicles", noun: "a vehicle", item: "Vehicle", hint: "Cars, bikes & more" },
+  { value: "consumer_product", label: "Products", noun: "a product", item: "Product", hint: "Everyday objects" },
+  { value: "mechanical_device", label: "Machines", noun: "a machine", item: "Machine", hint: "Robots & mechanisms" },
+  { value: "home_appliance", label: "Appliances", noun: "an appliance", item: "Appliance", hint: "Home electronics" },
+  { value: "character_creature", label: "Characters", noun: "a character", item: "Character", hint: "Creatures & people" },
+  { value: "nature_landscape", label: "Nature", noun: "something from nature", item: "Nature scene", hint: "Landscapes & plants" },
+  { value: "other", label: "Something else", noun: "something new", item: "Model", hint: "Any other idea" },
 ];
 
 export const PLANS = [
@@ -87,11 +89,38 @@ export function normalizeJobs(result) {
     jobId: job.job_id || job.jobId,
     createdAt: job.created_at || job.createdAt,
     outputKey: job.output_key || job.outputKey,
+    inputMode: job.input_mode || job.inputMode,
   }));
 }
 
+function photoSource(mode) {
+  return mode === "multiview" ? "3 photos" : "a photo";
+}
+
+/**
+ * Photo uploads are always stored as input.* / front.*, so the file key is never a
+ * useful name. Jobs created before titles existed fall back to their category.
+ */
 export function jobTitle(job) {
-  return job.prompt || job.input_key?.split("/").at(-1) || "Image-based 3D model";
+  if (job.title) return job.title;
+  if (job.prompt) return job.prompt;
+  return `${findCategory(job.category)?.item ?? "Model"} from ${photoSource(job.inputMode)}`;
+}
+
+// Camera, phone and messenger default names carry no meaning ("IMG_2034", "DSC00123",
+// "WhatsApp Image 2025-10-20 at 10.15.32", "front").
+const DEFAULT_FILE_NAME = /^(img|dsc[nf]?|pxl|mvimg|photo|image|picture|screenshot|scan|whatsapp image|signal|input|front|left|back|untitled)(?![a-z])/i;
+
+/** A name suggested by a photo's file name, or "" when the name is a camera default. */
+export function nameFromFile(file) {
+  const base = (file?.name || "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const meaningful = base.replace(DEFAULT_FILE_NAME, "").replace(/\bat\b/gi, "");
+  if (!/[a-z]{3,}/i.test(meaningful)) return "";
+  return (base[0].toUpperCase() + base.slice(1)).slice(0, MAX_NAME_LENGTH);
 }
 
 export function fileToBase64(file) {
@@ -121,7 +150,11 @@ export async function buildRequestBody(draft) {
     model: plan.model,
     category: draft.category,
     prompt: draft.mode === "prompt" ? draft.prompt.trim() : "",
+    title: draft.name.trim(),
   };
+  // A text prompt already describes the object; photos get an optional note.
+  const description = draft.description.trim();
+  if (draft.mode !== "prompt" && description) body.description = description;
 
   if (draft.mode === "single") {
     body.contentType = draft.single.type;
@@ -142,14 +175,22 @@ export async function buildRequestBody(draft) {
 }
 
 export function inputSummary(draft) {
-  if (draft.mode === "single") return `1 photo: ${draft.single?.name || "reference"}`;
-  if (draft.mode === "multiview") return "3 photos: front, left, back";
-  const text = draft.prompt.trim();
-  return text.length > 40 ? `${text.slice(0, 40)}…` : text;
+  const name = draft.name.trim();
+  const text = name || (draft.mode === "prompt" ? draft.prompt.trim() : "");
+  const source = draft.mode === "single" ? "1 photo" : draft.mode === "multiview" ? "3 photos" : "";
+  const label = text.length > 40 ? `${text.slice(0, 40)}…` : text;
+  return [label, source].filter(Boolean).join(" · ");
 }
 
 /** Whether the input step is complete, and why not when it isn't. */
 export function inputState(draft) {
+  const content = contentState(draft);
+  if (!content.ok) return content;
+  if (!draft.name.trim()) return { ok: false, hint: "Give it a name so you can find it on your shelf." };
+  return content;
+}
+
+function contentState(draft) {
   if (draft.mode === "prompt") {
     if (!draft.prompt.trim()) return { ok: false, hint: "Write a sentence or two to continue." };
     return { ok: true, hint: "Shape, material, style. A sentence is plenty." };
@@ -168,6 +209,8 @@ export function inputState(draft) {
 export const EMPTY_DRAFT = {
   mode: "prompt",
   prompt: "",
+  name: "",
+  description: "",
   single: null,
   views: { front: null, left: null, back: null },
   category: "",

@@ -24,7 +24,7 @@ function ShelfItem({ job, onOpen }) {
         <span className="st-pedestal-shadow" aria-hidden="true" />
         {group === "active" && <span className="st-badge is-dark">Making</span>}
       </span>
-      <span className="st-item-text">
+      <span className="st-item-text" title={job.description || undefined}>
         <b>{jobTitle(job)}</b>
         <span className={group === "failed" ? "is-danger" : ""}>
           {group === "failed" ? `Didn't finish${date ? ` · ${date}` : ""}` : meta}

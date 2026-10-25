@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   INPUT_MODES,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_NAME_LENGTH,
   MAX_PROMPT_LENGTH,
   MODEL_CATEGORIES,
   MULTIVIEW_NAMES,
   PLANS,
   checkImage,
   findPlan,
+  nameFromFile,
 } from "./model";
 
 function useObjectUrl(file) {
@@ -90,6 +93,11 @@ export function InputStep({ draft, update, status, onNext, setError }) {
     apply(file);
   }
 
+  // A meaningful file name ("villa-front.jpg") becomes the suggested name.
+  function suggestName(file) {
+    return draft.name.trim() ? {} : { name: nameFromFile(file) };
+  }
+
   return (
     <>
       <div role="tablist" aria-label="Input type" className="st-tabs">
@@ -134,7 +142,7 @@ export function InputStep({ draft, update, status, onNext, setError }) {
           file={draft.single}
           title="Drop one photo, or browse"
           caption="JPG, PNG or WEBP · up to 4 MB"
-          onPick={(file) => pickFile(file, (accepted) => update({ single: accepted }))}
+          onPick={(file) => pickFile(file, (accepted) => update({ single: accepted, ...suggestName(accepted) }))}
           onRemove={() => update({ single: null })}
         />
       )}
@@ -148,12 +156,46 @@ export function InputStep({ draft, update, status, onNext, setError }) {
               file={draft.views[name]}
               title={name.replace(/^./, (letter) => letter.toUpperCase())}
               caption={`${index * 90}°`}
-              onPick={(file) => pickFile(file, (accepted) => update({ views: { ...draft.views, [name]: accepted } }))}
+              onPick={(file) => pickFile(file, (accepted) => update({
+                views: { ...draft.views, [name]: accepted },
+                ...(name === "front" ? suggestName(accepted) : {}),
+              }))}
               onRemove={() => update({ views: { ...draft.views, [name]: null } })}
             />
           ))}
         </div>
       )}
+
+      <div className="st-details">
+        <div className="st-field">
+          <label htmlFor="st-name" className="st-label">Name</label>
+          <input
+            id="st-name"
+            className="st-input"
+            maxLength={MAX_NAME_LENGTH}
+            value={draft.name}
+            placeholder={draft.mode === "prompt" ? "Green desk lamp" : "Villa front elevation"}
+            autoComplete="off"
+            onChange={(event) => update({ name: event.target.value })}
+          />
+        </div>
+        {draft.mode !== "prompt" && (
+          <div className="st-field">
+            <label htmlFor="st-description" className="st-label">
+              Description <span>optional</span>
+            </label>
+            <textarea
+              id="st-description"
+              className="st-input st-description"
+              rows={2}
+              maxLength={MAX_DESCRIPTION_LENGTH}
+              value={draft.description}
+              placeholder="Materials, size, or anything the photos don't show"
+              onChange={(event) => update({ description: event.target.value })}
+            />
+          </div>
+        )}
+      </div>
 
       <Footer hint={status.hint} hintTone={!status.ok && draft.mode !== "prompt" ? "warn" : ""}>
         <button type="button" className="st-primary" onClick={onNext} disabled={!status.ok}>

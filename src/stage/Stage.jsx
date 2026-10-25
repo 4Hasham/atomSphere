@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { apiRequest } from "../api";
 import Cube from "./Cube";
+import GenerationTray from "./GenerationTray";
 import Shelf from "./Shelf";
 import useJobs from "./useJobs";
 import { AccountStep, CategoryStep, InputStep, PaymentStep } from "./Steps";
@@ -169,6 +170,8 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
           )}
         </div>
       </header>
+
+      <GenerationTray jobs={jobs} onOpen={onOpenModel} />
 
       <section className="st-stage" aria-label="Stage">
         {showCube && (

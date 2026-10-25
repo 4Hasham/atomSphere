@@ -11,7 +11,9 @@ import {
   checkImage,
   findPlan,
   nameFromFile,
+  photoBudget,
 } from "./model";
+import prepareImage from "./prepareImage";
 
 // Three ways in, not three steps: each mode gets its own icon.
 const MODE_ICONS = { prompt: TextIcon, single: PhotoIcon, multiview: PhotosIcon };
@@ -87,19 +89,24 @@ function PhotoSlot({ id, file, title, caption, tall, onPick, onRemove }) {
 }
 
 export function InputStep({ draft, update, status, onNext, setError }) {
-  function pickFile(file, apply) {
+  // Checks the original, then shrinks it for upload (see prepareImage.js).
+  async function pickFile(file, apply) {
     const problem = checkImage(file);
     if (problem) {
       setError(problem);
       return;
     }
     setError("");
-    apply(file);
+    try {
+      apply(await prepareImage(file, photoBudget(draft.mode)));
+    } catch (prepareError) {
+      setError(prepareError.message);
+    }
   }
 
   // A meaningful file name ("villa-front.jpg") becomes the suggested name.
-  function suggestName(file) {
-    return draft.name.trim() ? {} : { name: nameFromFile(file) };
+  function suggestName(current, file) {
+    return current.name.trim() ? {} : { name: nameFromFile(file) };
   }
 
   return (
@@ -148,8 +155,11 @@ export function InputStep({ draft, update, status, onNext, setError }) {
           tall
           file={draft.single}
           title="Drop one photo, or browse"
-          caption="JPG, PNG or WEBP · up to 4 MB"
-          onPick={(file) => pickFile(file, (accepted) => update({ single: accepted, ...suggestName(accepted) }))}
+          caption="JPG, PNG or WEBP · up to 20 MB"
+          onPick={(file) => pickFile(file, (accepted) => update((current) => ({
+            single: accepted,
+            ...suggestName(current, accepted),
+          })))}
           onRemove={() => update({ single: null })}
         />
       )}
@@ -163,11 +173,11 @@ export function InputStep({ draft, update, status, onNext, setError }) {
               file={draft.views[name]}
               title={name.replace(/^./, (letter) => letter.toUpperCase())}
               caption={`${index * 90}°`}
-              onPick={(file) => pickFile(file, (accepted) => update({
-                views: { ...draft.views, [name]: accepted },
-                ...(name === "front" ? suggestName(accepted) : {}),
-              }))}
-              onRemove={() => update({ views: { ...draft.views, [name]: null } })}
+              onPick={(file) => pickFile(file, (accepted) => update((current) => ({
+                views: { ...current.views, [name]: accepted },
+                ...(name === "front" ? suggestName(current, accepted) : {}),
+              })))}
+              onRemove={() => update((current) => ({ views: { ...current.views, [name]: null } }))}
             />
           ))}
         </div>

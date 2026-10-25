@@ -9,7 +9,8 @@ the OS asks for reduced motion). Light and dark themes follow the OS until the
 person toggles them.
 
 - **Input:** exactly one of: a text description, one photo, or three photos
-  (front, left, back; 4 MB in total).
+  (front, left, back). Photos up to 20 MB are accepted and shrunk in the browser
+  (2048 px, ~0.5–1 MB) before upload; see `src/stage/prepareImage.js`.
 - **Category:** `suggestCategory()` in `src/stage/model.js` is the hook-point
   for automatic suggestions. Return a category value and the UI tags it
   *Suggested*, preselects it and words the headline as a statement.

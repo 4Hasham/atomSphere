@@ -3,6 +3,7 @@
 export const API_URL = import.meta.env.VITE_API_URL;
 export const JOBS_API_URL = `${API_URL}/requests`;
 export const CREATE_JOB_URL = `${API_URL}/meteoclone-add-request`;
+export const MODEL_UPLOAD_URL = `${API_URL}/model-upload`;
 export const DRAFT_STORAGE_KEY = "atomsphere_pending_draft";
 
 // Photos are shrunk in the browser (see prepareImage.js), so people can pick phone
@@ -85,15 +86,26 @@ export function statusGroup(status) {
   return "other";
 }
 
+// An upload still "uploading" after this long was abandoned (tab closed mid-upload).
+const STALE_UPLOAD_MS = 60 * 60 * 1000;
+
 export function normalizeJobs(result) {
   const jobs = Array.isArray(result) ? result : result.jobs || result.items || [];
-  return jobs.map((job) => ({
-    ...job,
-    jobId: job.job_id || job.jobId,
-    createdAt: job.created_at || job.createdAt,
-    outputKey: job.output_key || job.outputKey,
-    inputMode: job.input_mode || job.inputMode,
-  }));
+  return jobs.map((job) => {
+    const normalized = {
+      ...job,
+      jobId: job.job_id || job.jobId,
+      createdAt: job.created_at || job.createdAt,
+      outputKey: job.output_key || job.outputKey,
+      inputMode: job.input_mode || job.inputMode,
+      sizeMeters: job.size_m ?? job.sizeMeters,
+    };
+    const stale = Date.now() - Date.parse(normalized.createdAt) > STALE_UPLOAD_MS;
+    if (normalized.inputMode === "upload" && normalized.status === "uploading" && stale) {
+      normalized.status = "failed";
+    }
+    return normalized;
+  });
 }
 
 function photoSource(mode) {

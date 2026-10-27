@@ -4,6 +4,7 @@ import Logo from "../brand/Logo";
 import { PlusIcon, ShelfIcon } from "../brand/icons";
 import ThemeToggle from "../brand/ThemeToggle";
 import AccountMenu from "./AccountMenu";
+import UploadModel from "./UploadModel";
 import Cube from "./Cube";
 import GenerationTray from "./GenerationTray";
 import Shelf from "./Shelf";
@@ -32,6 +33,7 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const { jobs, loading, error: jobsError, reload } = useJobs(auth, refreshKey);
 
   // Accepts a patch, or a function of the current draft for updates that land after an await.
@@ -186,6 +188,19 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
 
       <GenerationTray jobs={jobs} onOpen={onOpenModel} />
 
+      {/* Uploads are for signed-in users only: the shelf that opens this requires it,
+          and the upload API rejects requests without a signed-in owner. */}
+      {uploadOpen && auth.isAuthenticated && (
+        <UploadModel
+          auth={auth}
+          onClose={() => setUploadOpen(false)}
+          onUploaded={() => {
+            setUploadOpen(false);
+            reload();
+          }}
+        />
+      )}
+
       <section className="st-stage" aria-label="Stage">
         {showCube && (
           <div className="st-hero-object">
@@ -229,6 +244,7 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
               error={jobsError}
               onReload={reload}
               onOpen={onOpenModel}
+              onUpload={() => setUploadOpen(true)}
             />
           )}
         </div>

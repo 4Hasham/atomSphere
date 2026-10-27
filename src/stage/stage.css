@@ -990,6 +990,88 @@
   color: var(--danger);
 }
 
+/* ---------- Upload your own model ---------- */
+
+.st-upload-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.st-badge.is-light {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 2px var(--shade);
+}
+
+.st-dialog {
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 20px;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 24px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 2px var(--shade), 0 40px 80px -30px var(--shade);
+}
+
+.st-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: st-rise 0.25s ease both;
+}
+
+.st-dialog::backdrop {
+  background: rgba(10, 12, 16, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+.st-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.st-dialog-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.st-model-slot {
+  min-height: 150px;
+}
+
+.st-model-slot.is-filled {
+  border-style: solid;
+  cursor: pointer;
+}
+
+.st-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.st-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--pri);
+}
+
+.st-upload-bar {
+  margin-top: -6px;
+}
+
+.st-upload-bar span {
+  transition: width 0.2s ease;
+}
+
 /* ---------- Generation tray ---------- */
 
 .st-tray {

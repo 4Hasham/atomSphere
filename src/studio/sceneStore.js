@@ -20,6 +20,10 @@ export function createSceneStore(initialDocument) {
       document: initialDocument,
       past: [],
       future: [],
+      // How the property is shown (which level, roof on/off): a viewing choice, not an
+      // edit, so it isn't part of the document or the undo history.
+      propertyView: { level: "all", roof: true },
+      setPropertyView: (patch) => set((state) => ({ propertyView: { ...state.propertyView, ...patch } })),
 
       // A real-world terrain and an image backdrop both supply the ground around the
       // model, so they must never be active together. Setting a site clears the

@@ -90,6 +90,8 @@ export default function SceneControls({ terrainStatus }) {
         <ModelSizeControl key={`${object.id}-${object.sizeMeters}`} object={object} />
       ))}
 
+      <PropertyViewControls />
+
       <section className="terrain-section" aria-labelledby="terrain-title">
         <h3 id="terrain-title">Terrain backdrop</h3>
         <p className="terrain-description">Set a location to add real-world terrain to your scene.</p>
@@ -149,6 +151,43 @@ function ModelSizeControl({ object }) {
       />
       <p>Length of the model&apos;s longest side. A car is about 4.5 m, a house 10–20 m.</p>
     </form>
+  );
+}
+
+function PropertyViewControls() {
+  const property = useScene((state) => state.document.property);
+  const view = useScene((state) => state.propertyView);
+  const setView = useScene((state) => state.setPropertyView);
+  if (!property) return null;
+
+  const showingAll = view.level === "all";
+  return (
+    <section className="terrain-section" aria-labelledby="property-view-title">
+      <h3 id="property-view-title">Property</h3>
+      <div className="scene-preset-control">
+        <label htmlFor="property-level">Show</label>
+        <select
+          id="property-level"
+          value={view.level}
+          onChange={(event) => setView({ level: event.target.value })}
+        >
+          <option value="all">Whole house</option>
+          {property.levels.map((level, index) => (
+            <option key={level.id} value={String(index)}>Up to {level.name.toLowerCase()}</option>
+          ))}
+        </select>
+        <p>Picking a floor hides the ones above it, so you can look inside.</p>
+      </div>
+      <label className="scene-toggle">
+        <input
+          type="checkbox"
+          checked={view.roof && showingAll}
+          disabled={!showingAll}
+          onChange={(event) => setView({ roof: event.target.checked })}
+        />
+        <span>Roof</span>
+      </label>
+    </section>
   );
 }
 

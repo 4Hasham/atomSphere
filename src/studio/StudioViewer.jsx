@@ -8,6 +8,9 @@ import { findBackdrop, groundFor, STUDIO_SURFACES } from "./backdrops/backdrops"
 import SunLight from "./lighting/SunLight";
 import { DroppedModel, LoadedModel } from "./objects/SceneModel";
 import ViewerErrorBoundary from "./objects/ViewerErrorBoundary";
+import PropertyCamera from "./property/PropertyCamera";
+import PropertyModel from "./property/PropertyModel";
+import { propertySize } from "./property/propertyDocument";
 import { createJobObject, createSceneDocument } from "./sceneDocument";
 import { createSceneStore, SceneStoreContext, useScene } from "./sceneStore";
 import CameraGroundGuard from "./terrain/CameraGroundGuard";
@@ -27,10 +30,20 @@ function isTextEntry(target) {
     && (target.isContentEditable || target.matches("input, textarea"));
 }
 
-export default function StudioViewer({ url, jobId, prompt, sizeMeters, theme = "dark", onToggleTheme, onBack }) {
-  const [store] = useState(() => createSceneStore(
-    createSceneDocument({ objects: [createJobObject(jobId, prompt, sizeMeters)] }),
-  ));
+export default function StudioViewer({
+  url,
+  jobId,
+  prompt,
+  sizeMeters,
+  property = null,
+  theme = "dark",
+  onToggleTheme,
+  onBack,
+}) {
+  const [store] = useState(() => createSceneStore(createSceneDocument({
+    objects: url ? [createJobObject(jobId, prompt, sizeMeters)] : [],
+    property,
+  })));
   // Signed URLs expire, so they live beside the document rather than in it.
   const modelUrls = { [jobId]: url };
 
@@ -86,10 +99,18 @@ function StudioWorkspace({ modelUrls, theme }) {
   const backdrop = findBackdrop(useScene((state) => state.document.backdrop));
   const presetId = useScene((state) => state.document.weather.presetId);
   const objects = useScene((state) => state.document.objects);
+  const property = useScene((state) => state.document.property);
+  const propertyView = useScene((state) => state.propertyView);
   const terrainStatus = useTerrain(site);
   const terrain = terrainStatus.terrain;
   const scenePreset = SCENE_PRESETS.find((preset) => preset.id === presetId) ?? SCENE_PRESETS[0];
-  const modelSize = Math.max(...objects.map((object) => object.sizeMeters));
+  const modelSize = Math.max(
+    ...objects.map((object) => object.sizeMeters),
+    property ? propertySize(property) : 0,
+  );
+  const propertyModel = property && (
+    <PropertyModel property={property} level={propertyView.level} roof={propertyView.roof} />
+  );
   // An image backdrop lights the scene itself; the preset's light rig is only for the
   // grid and terrain. Its sun still casts the shadows, aimed where the photo's sun is.
   const imageLit = Boolean(backdrop.file);
@@ -105,7 +126,8 @@ function StudioWorkspace({ modelUrls, theme }) {
         <div className="viewer-canvas">
           <Canvas
             shadows
-            camera={{ position: [20, 5, 6], fov: 42, near: 0.5, far: 200000 }}
+            // Buildings read best from a raised 3/4 view; objects from near eye level.
+            camera={{ position: property ? [18, 16, 24] : [20, 5, 6], fov: 42, near: 0.5, far: 200000 }}
             gl={{ logarithmicDepthBuffer: true }}
             dpr={[1, 1.5]}
           >
@@ -193,16 +215,21 @@ function StudioWorkspace({ modelUrls, theme }) {
               <Suspense fallback={<Html center className="viewer-loading">Loading GLB…</Html>}>
                 <ViewerErrorBoundary>
                   {terrain ? (
-                    objects.map((object) => (
-                      <DroppedModel
-                        key={`${object.id}-${siteKey}-${object.sizeMeters}`}
-                        url={modelUrls[object.source.jobId]}
-                        sizeMeters={object.sizeMeters}
-                      />
-                    ))
+                    <>
+                      {/* The site's ground height is y = 0, where the property stands. */}
+                      {propertyModel}
+                      {objects.map((object) => (
+                        <DroppedModel
+                          key={`${object.id}-${siteKey}-${object.sizeMeters}`}
+                          url={modelUrls[object.source.jobId]}
+                          sizeMeters={object.sizeMeters}
+                        />
+                      ))}
+                    </>
                   ) : (
                     // Keyed on model sizes so a resize reframes the camera.
                     <Bounds key={objects.map((object) => object.sizeMeters).join()} fit observe margin={1.25}>
+                      {propertyModel}
                       {objects.map((object) => (
                         <LoadedModel
                           key={object.id}
@@ -216,6 +243,7 @@ function StudioWorkspace({ modelUrls, theme }) {
               </Suspense>
             </Physics>
 
+            {property && <PropertyCamera level={propertyView.level} />}
             <OrbitControls
               makeDefault
               autoRotate={!terrain}

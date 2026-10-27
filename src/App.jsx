@@ -4,6 +4,8 @@ import { apiRequest } from "./api";
 import Studio, { StudioStatus } from "./Studio";
 import Landing from "./landing/Landing";
 import Stage from "./stage/Stage";
+import StudioViewer from "./studio/StudioViewer";
+import { createSampleProperty } from "./studio/property/propertyDocument";
 import { CREATE_JOB_URL, DRAFT_STORAGE_KEY, jobTitle } from "./stage/model";
 import useTheme from "./useTheme";
 import "./studio/studio.css";
@@ -81,6 +83,21 @@ function App() {
         <p className="boot-text">Connecting to atomSphere…</p>
         <span className="boot-line" aria-hidden="true" />
       </main>
+    );
+  }
+
+  // Development only, until the floorplan editor exists: /studio?demo=property opens a
+  // sample two-storey house in property mode.
+  if (import.meta.env.DEV && pathname === "/studio" && new URLSearchParams(window.location.search).get("demo") === "property") {
+    return (
+      <StudioViewer
+        jobId="demo-property"
+        prompt="Sample house (10 marla, 2 storeys)"
+        property={createSampleProperty()}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onBack={leaveStudio}
+      />
     );
   }
 

@@ -12,14 +12,16 @@ export const DEFAULT_MODEL_SIZE_METERS = 4.5;
 //   backdrop: "none" | a backdrops.js id,
 //   weather: { presetId },
 //   objects: [{ id, name, sizeMeters, source: { type: "job", jobId } }],  // sizeMeters: largest side
+//   property: a property document (property/propertyDocument.js) | null,
 // }
-export function createSceneDocument({ objects = [] } = {}) {
+export function createSceneDocument({ objects = [], property = null } = {}) {
   return {
     version: SCENE_DOCUMENT_VERSION,
     site: null,
     backdrop: "none",
     weather: { presetId: SCENE_PRESETS[0].id },
     objects,
+    property,
   };
 }
 

@@ -27,9 +27,9 @@ function isTextEntry(target) {
     && (target.isContentEditable || target.matches("input, textarea"));
 }
 
-export default function StudioViewer({ url, jobId, prompt, theme = "dark", onToggleTheme, onBack }) {
+export default function StudioViewer({ url, jobId, prompt, sizeMeters, theme = "dark", onToggleTheme, onBack }) {
   const [store] = useState(() => createSceneStore(
-    createSceneDocument({ objects: [createJobObject(jobId, prompt)] }),
+    createSceneDocument({ objects: [createJobObject(jobId, prompt, sizeMeters)] }),
   ));
   // Signed URLs expire, so they live beside the document rather than in it.
   const modelUrls = { [jobId]: url };

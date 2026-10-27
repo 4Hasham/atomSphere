@@ -57,6 +57,8 @@ function App() {
 
   function openModel(job) {
     const params = new URLSearchParams({ job: job.jobId, prompt: jobTitle(job) });
+    // Uploaded models open at their real size; generated ones use Studio's default.
+    if (job.sizeMeters) params.set("size", String(job.sizeMeters));
     window.history.pushState({}, "", `/studio?${params}`);
     setPathname("/studio");
   }
@@ -86,6 +88,7 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const jobId = params.get("job");
     const prompt = params.get("prompt") || "Generated model";
+    const sizeMeters = Number(params.get("size")) || undefined;
 
     return (
       <Suspense fallback={<StudioStatus onBack={leaveStudio} message="Preparing Studio…" />}>
@@ -94,6 +97,7 @@ function App() {
           accessToken={auth.user?.access_token}
           jobId={jobId}
           prompt={prompt}
+          sizeMeters={sizeMeters}
           theme={theme}
           onToggleTheme={toggleTheme}
           onBack={leaveStudio}

@@ -23,11 +23,19 @@ export function createSceneDocument({ objects = [] } = {}) {
   };
 }
 
-export function createJobObject(jobId, name) {
+// Largest side Studio accepts (matches the size control), so a model exported in the
+// wrong units (e.g. millimetres) still opens at a usable size.
+const MIN_SIZE_METERS = 0.1;
+const MAX_SIZE_METERS = 500;
+
+export function createJobObject(jobId, name, sizeMeters) {
+  const size = Number(sizeMeters) > 0
+    ? Math.min(MAX_SIZE_METERS, Math.max(MIN_SIZE_METERS, Number(sizeMeters)))
+    : DEFAULT_MODEL_SIZE_METERS;
   return {
     id: `job-${jobId}`,
     name,
-    sizeMeters: DEFAULT_MODEL_SIZE_METERS,
+    sizeMeters: Math.round(size * 100) / 100,
     source: { type: "job", jobId },
   };
 }

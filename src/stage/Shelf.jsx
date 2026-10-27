@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { UploadIcon } from "../brand/icons";
 import Cube from "./Cube";
 import { findCategory, jobTitle, statusGroup } from "./model";
 
@@ -22,7 +23,10 @@ function ShelfItem({ job, onOpen }) {
       <span className="st-pedestal">
         <Cube state={cubeState} size={60} />
         <span className="st-pedestal-shadow" aria-hidden="true" />
-        {group === "active" && <span className="st-badge is-dark">Making</span>}
+        {group === "active" && (
+          <span className="st-badge is-dark">{job.inputMode === "upload" ? "Uploading" : "Making"}</span>
+        )}
+        {group === "ready" && job.inputMode === "upload" && <span className="st-badge is-light">Uploaded</span>}
       </span>
       <span className="st-item-text" title={job.description || undefined}>
         <b>{jobTitle(job)}</b>
@@ -50,7 +54,7 @@ function ShelfItem({ job, onOpen }) {
   );
 }
 
-export default function Shelf({ jobs, loading, error, onReload, onOpen }) {
+export default function Shelf({ jobs, loading, error, onReload, onOpen, onUpload }) {
   const [filter, setFilter] = useState("all");
 
   const counts = useMemo(() => {
@@ -88,6 +92,9 @@ export default function Shelf({ jobs, loading, error, onReload, onOpen }) {
             </button>
           ))}
         </div>
+        <button type="button" className="st-secondary st-upload-open" onClick={onUpload}>
+          <UploadIcon /> Upload model
+        </button>
       </div>
 
       {error && (

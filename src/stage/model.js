@@ -46,14 +46,14 @@ export const PLANS = [
   {
     id: "standard",
     name: "Standard",
-    price: 2,
+    price: 3,
     model: "hunyuan",
-    description: "The fastest way to test an idea, silhouette or layout. Clean baseline mesh.",
+    description: "Realistic materials that react to light. Quick to make, great for testing an idea or layout.",
   },
   {
     id: "polished",
     name: "Polished",
-    price: 4,
+    price: 5,
     model: "meshy",
     description: "Finer geometry and richer materials for production. Takes a little longer.",
   },

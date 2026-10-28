@@ -660,6 +660,75 @@
   font-weight: 600;
 }
 
+.pe-delete {
+  position: absolute;
+  z-index: 2;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--danger-line);
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--soft-shadow);
+  color: var(--danger);
+  font-size: 0.66rem;
+  font-weight: 500;
+  /* Just above the selection, so it never covers what you clicked. */
+  transform: translate(-50%, calc(-100% - 14px));
+}
+
+.pe-room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pe-room-list li {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.pe-room-list li.is-selected {
+  background: var(--field-bg-strong);
+}
+
+.pe-room-pick {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 0.7rem;
+  text-align: left;
+}
+
+.pe-room-area {
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.pe-room-delete {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-faint);
+  font-size: 0.85rem;
+}
+
+.pe-room-delete:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .pe-levels {
   display: flex;
   flex-wrap: wrap;

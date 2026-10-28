@@ -59,6 +59,37 @@ function Field({ id, label, children }) {
   );
 }
 
+function RoomsSection({ level, levelIndex, unit, selection, editProperty, select }) {
+  if (!level.rooms.length) return null;
+  return (
+    <section className="terrain-section" aria-labelledby="pe-rooms-title">
+      <h3 id="pe-rooms-title">Rooms on this floor</h3>
+      <ul className="pe-room-list">
+        {level.rooms.map((room) => (
+          <li key={room.id} className={selection?.kind === "room" && selection.id === room.id ? "is-selected" : ""}>
+            <button type="button" className="pe-room-pick" onClick={() => select({ kind: "room", id: room.id })}>
+              <span>{room.name}</span>
+              <span className="pe-room-area">{formatArea(polygonArea(room.polygon), unit)}</span>
+            </button>
+            <button
+              type="button"
+              className="pe-room-delete"
+              aria-label={`Delete ${room.name}`}
+              title={`Delete ${room.name}`}
+              onClick={() => {
+                editProperty((p) => removeRoom(p, levelIndex, room.id));
+                if (selection?.id === room.id) select(null);
+              }}
+            >
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function LevelsSection({ property, levelIndex, onPick, editProperty }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const level = property.levels[levelIndex];
@@ -463,6 +494,15 @@ export default function EditorPanel() {
         unit={editor.unit}
         editProperty={editProperty}
         clear={() => setEditor({ selection: null })}
+      />
+
+      <RoomsSection
+        level={level}
+        levelIndex={levelIndex}
+        unit={editor.unit}
+        selection={editor.selection}
+        editProperty={editProperty}
+        select={(selection) => setEditor({ selection, tool: "select" })}
       />
 
       <LevelsSection

@@ -168,6 +168,38 @@ export default function PlanEditor() {
     ...extra,
   }), [level.walls, view, anchor, draft]);
 
+  const deleteSelection = useCallback(() => {
+    if (!selection) return;
+    if (selection.kind === "wall") editProperty((p) => removeWall(p, levelIndex, selection.id));
+    if (selection.kind === "opening") editProperty((p) => removeOpening(p, levelIndex, selection.wallId, selection.id));
+    if (selection.kind === "room") editProperty((p) => removeRoom(p, levelIndex, selection.id));
+    select(null);
+  }, [selection, levelIndex, editProperty, select]);
+
+  // Where the selection is on screen, for the Delete button beside it.
+  const selectionAnchor = useMemo(() => {
+    if (!selection || !view) return null;
+    let point = null;
+    if (selection.kind === "room") {
+      const room = level.rooms.find((item) => item.id === selection.id);
+      if (room) point = centroid(room.polygon);
+    } else {
+      const wall = level.walls.find((item) => item.id === (selection.kind === "wall" ? selection.id : selection.wallId));
+      if (wall && selection.kind === "wall") point = [(wall.a[0] + wall.b[0]) / 2, (wall.a[1] + wall.b[1]) / 2];
+      if (wall && selection.kind === "opening") {
+        const opening = wall.openings.find((item) => item.id === selection.id);
+        const length = wallLength(wall);
+        if (opening && length) {
+          point = [
+            wall.a[0] + ((wall.b[0] - wall.a[0]) * opening.at) / length,
+            wall.a[1] + ((wall.b[1] - wall.a[1]) * opening.at) / length,
+          ];
+        }
+      }
+    }
+    return point ? [point[0] * view.scale + view.x, point[1] * view.scale + view.y] : null;
+  }, [selection, view, level]);
+
   // ---------- Keyboard ----------
   useEffect(() => {
     function onKey(event) {
@@ -186,15 +218,9 @@ export default function PlanEditor() {
       const match = TOOLS.find((item) => item.key === event.key.toLowerCase());
       if (match) setEditor({ tool: match.id });
     }
-    function deleteSelection() {
-      if (selection.kind === "wall") editProperty((p) => removeWall(p, levelIndex, selection.id));
-      if (selection.kind === "opening") editProperty((p) => removeOpening(p, levelIndex, selection.wallId, selection.id));
-      if (selection.kind === "room") editProperty((p) => removeRoom(p, levelIndex, selection.id));
-      select(null);
-    }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [draft, setDraft, selection, levelIndex, editProperty, select, setEditor]);
+  }, [draft, setDraft, selection, deleteSelection, select, setEditor]);
 
   // ---------- Pointer ----------
   function hitTest(point) {
@@ -571,6 +597,18 @@ export default function PlanEditor() {
         </g>
       )}
     </svg>
+      {selectionAnchor && !drag && (
+        <button
+          type="button"
+          className="pe-delete"
+          style={{ left: selectionAnchor[0], top: selectionAnchor[1] }}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={deleteSelection}
+          aria-label={`Delete selected ${selection.kind === "opening" ? "door or window" : selection.kind}`}
+        >
+          Delete
+        </button>
+      )}
     </div>
   );
 }

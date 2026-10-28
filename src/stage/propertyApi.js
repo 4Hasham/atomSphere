@@ -10,6 +10,24 @@ export const createProperty = (token, title) => call(token, { action: "create", 
 export const loadProperty = (token, id) => call(token, { action: "load", id });
 export const saveProperty = (token, id, scene) => call(token, { action: "save", id, scene });
 
+/** Turns on the property's share link; resolves with its token (the same until unshared). */
+export const shareProperty = async (token, id) => (await call(token, { action: "share", id })).token;
+export const unshareProperty = (token, id) => call(token, { action: "unshare", id });
+
+/** The public link for a share token. */
+export const shareUrl = (shareToken) => `${window.location.origin}/p/${shareToken}`;
+
+/**
+ * A shared property, for anyone with the link (no sign-in): { title, scene, modelUrls,
+ * hiddenObjects }. See backend/lambdas/shared.js.
+ */
+export async function loadSharedProperty(shareToken) {
+  const response = await fetch(`${import.meta.env.VITE_API_URL}/shared/${encodeURIComponent(shareToken)}`);
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || "Couldn't open this property.");
+  return result;
+}
+
 /** Uploads a floorplan image for one level; returns its storage key. */
 export async function uploadPlanImage(token, id, levelId, blob, onProgress) {
   const { key, upload } = await call(token, {

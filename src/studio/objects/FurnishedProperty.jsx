@@ -33,6 +33,7 @@ export default function FurnishedProperty({ theme }) {
   const setStaging = useScene((state) => state.setStaging);
   const addObject = useScene((state) => state.addObject);
   const placeObject = useScene((state) => state.placeObject);
+  const readOnly = useScene((state) => state.readOnly);
   const urls = useModelUrls(objects);
   const jobsById = useJobsById();
   const jobsLoading = useObjectLibrary()?.jobsLoading ?? true;
@@ -80,7 +81,7 @@ export default function FurnishedProperty({ theme }) {
       level={view.level}
       roof={view.roof}
       theme={theme}
-      onClick={handleClick}
+      onClick={readOnly ? undefined : handleClick}
       onPointerMove={placing ? handlePointerMove : undefined}
     >
       {objects.map((object) => {
@@ -97,7 +98,7 @@ export default function FurnishedProperty({ theme }) {
             jobsLoading={jobsLoading}
             selected={selected === object.id}
             // While placing, clicks pass through objects, so things can go on a table.
-            onSelect={placing ? undefined : () => setStaging({ selected: object.id })}
+            onSelect={placing || readOnly ? undefined : () => setStaging({ selected: object.id })}
           />
         );
       })}

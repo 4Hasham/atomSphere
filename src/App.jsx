@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { trackEvent, trackPageView } from "./analytics";
 import { useAuth } from "./auth/useAuth";
 import SignInPage from "./auth/SignInPage";
 import PropertyStudio from "./PropertyStudio";
+import SharedProperty from "./SharedProperty";
 import Studio, { StudioStatus } from "./Studio";
 import Landing from "./landing/Landing";
 import Stage from "./stage/Stage";
@@ -32,17 +34,21 @@ function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  const title = pathname === "/studio"
+    ? "Studio — atomSphere"
+    : pathname === "/signin"
+      ? "Sign in — atomSphere"
+    : pathname === "/" && !auth.isAuthenticated
+      ? "atomSphere — See the house before you buy it."
+      : step === "shelf"
+      ? "Shelf — atomSphere"
+      : "atomSphere — See the house before you buy it.";
+
+  // A page view per new path or title (the shelf shares "/" with the Stage).
   useEffect(() => {
-    document.title = pathname === "/studio"
-      ? "Studio — atomSphere"
-      : pathname === "/signin"
-        ? "Sign in — atomSphere"
-      : pathname === "/" && !auth.isAuthenticated
-        ? "atomSphere — See the house before you buy it."
-        : step === "shelf"
-        ? "Shelf — atomSphere"
-        : "atomSphere — See the house before you buy it.";
-  }, [pathname, step, auth.isAuthenticated]);
+    document.title = title;
+    if (!auth.isLoading) trackPageView();
+  }, [title, pathname, auth.isLoading]);
 
   // /signin once signed in (a bookmark, another tab) shows the shelf's page instead.
   const signedInOnSignInPage = pathname === "/signin" && auth.isAuthenticated;
@@ -85,6 +91,21 @@ function App() {
         <p className="boot-text">Connecting to atomSphere…</p>
         <span className="boot-line" aria-hidden="true" />
       </main>
+    );
+  }
+
+  // A shared property: anyone with the link, signed in or not.
+  const sharedToken = pathname.match(/^\/p\/([A-Za-z0-9_-]+)$/)?.[1];
+  if (sharedToken) {
+    return (
+      <SharedProperty
+        key={sharedToken}
+        token={sharedToken}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onHome={() => navigate("/")}
+        onStart={() => navigate("/create")}
+      />
     );
   }
 
@@ -157,7 +178,10 @@ function App() {
       <Landing
         theme={theme}
         toggleTheme={toggleTheme}
-        onStart={() => navigate("/create")}
+        onStart={() => {
+          trackEvent("start_floorplan");
+          navigate("/create");
+        }}
         onSignIn={() => navigate("/signin")}
       />
     );

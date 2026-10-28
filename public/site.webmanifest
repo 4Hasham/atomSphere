@@ -1,7 +1,7 @@
 {
   "name": "atomSphere",
   "short_name": "atomSphere",
-  "description": "Turn a sentence, one photo or three photos into a 3D model you can light, place and keep.",
+  "description": "Upload a floorplan and get a 3D house you can explore floor by floor, with every room to scale, on its real location.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#111214",

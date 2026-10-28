@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { trackEvent } from "../analytics";
 import { apiRequest } from "../api";
 import Logo from "../brand/Logo";
 import { PlusIcon, ShelfIcon } from "../brand/icons";
@@ -98,6 +99,7 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
         property.levels[0].underlay = initialUnderlay(plan, key);
       }
       await saveProperty(token, id, sceneToSave(createSceneDocument({ property })));
+      trackEvent("create_property", { has_plan: Boolean(plan) });
       setDraft(EMPTY_DRAFT);
       onOpenProperty({ id, title: name });
     } catch (createError) {

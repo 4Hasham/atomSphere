@@ -105,7 +105,7 @@ Planned additions: share links (#17), credits and local payments (#48, #49), AR 
 * **Floorplan input & saving (#52):** Floorplan is the first Stage input (name + optional PDF / image); properties are saved per user (scene JSON and plan images in the private bucket, via `properties.js`) and autosaved from Studio; they live on the Shelf. PDFs are drawn in the browser with pdf.js. Deploy: #60.
 
 **Next** (per `marketing.md` §5, the minimum before outreach: share link, walkthrough, one exterior finish; order agreed: restructure (done), share link, then AI floorplan reading)
-0. **Deploy the pre sign-up trigger (#67)** and move Cognito's emails to SES (#68): Cognito's own sender allows about 50 emails a day.
+0. **Deploy the shared-property endpoint (#70)** and move Cognito's emails to SES (#68): Cognito's own sender allows about 50 emails a day.
 1. **Plan view & walkthrough (#53):** plan view with names, areas, dimensions and PNG export; first-person walkthrough with tap-to-teleport between rooms; stairs.
 2. **Exterior from photos** (how the house's real look gets in). The plan gives the shape and rooms; the user's exterior photos give the appearance:
    * **Materials & details (#55):** finishes per wall and floor (stone cladding, paint, marble) from a library or a patch of a photo; ready-made parts (parapet, boundary wall, gate, window frames, railings).

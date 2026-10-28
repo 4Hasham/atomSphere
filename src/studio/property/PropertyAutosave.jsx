@@ -3,7 +3,7 @@ import { sceneToSave } from "../../stage/propertyApi";
 import { SceneStoreContext } from "../sceneStore";
 
 const SAVE_DELAY_MS = 1200;
-const SAVED_FIELDS = ["property", "site", "backdrop", "weather"];
+const SAVED_FIELDS = ["property", "objects", "site", "backdrop", "weather"];
 
 const LABELS = {
   saved: "Saved",

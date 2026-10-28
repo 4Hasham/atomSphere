@@ -1,6 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { apiRequest } from "./api";
 import { StudioStatus } from "./Studio";
+import { CREATE_JOB_URL, MODEL_URL_API_URL } from "./stage/model";
 import { loadProperty, saveProperty, uploadPlanImage } from "./stage/propertyApi";
+import useJobs from "./stage/useJobs";
+import { ObjectLibraryContext } from "./studio/objects/objectLibrary";
 import { createEmptyProperty } from "./studio/property/propertyEdits";
 import { createSceneDocument } from "./studio/sceneDocument";
 
@@ -25,7 +29,13 @@ export default function PropertyStudio({ accessToken, propertyId, theme, onToggl
     loadProperty(accessToken, propertyId)
       .then((result) => {
         if (!active) return;
-        const scene = { ...createSceneDocument({ property: createEmptyProperty() }), ...(result.scene ?? {}), objects: [] };
+        const saved = result.scene ?? {};
+        const scene = {
+          ...createSceneDocument({ property: createEmptyProperty() }),
+          ...saved,
+          // Only objects placed in the house belong to it.
+          objects: (saved.objects ?? []).filter((object) => object.placement),
+        };
         // Each floor's plan image, by level id, from the signed URLs.
         const underlayImages = {};
         scene.property.levels.forEach((level) => {
@@ -48,22 +58,42 @@ export default function PropertyStudio({ accessToken, propertyId, theme, onToggl
     uploadPlanImage: (levelId, blob, onProgress) => uploadPlanImage(accessToken, propertyId, levelId, blob, onProgress),
   }), [save, accessToken, propertyId]);
 
+  // The user's objects (made or uploaded), to furnish the property with.
+  const { jobs, loading: jobsLoading, reload } = useJobs(accessToken);
+  const library = useMemo(() => ({
+    jobs,
+    jobsLoading,
+    reload,
+    token: accessToken,
+    getModelUrl: async (jobId) => {
+      const result = await apiRequest(MODEL_URL_API_URL, accessToken, {
+        method: "POST",
+        body: JSON.stringify({ job_id: jobId }),
+      });
+      if (!result.url) throw new Error("The model URL service returned no signed URL.");
+      return result.url;
+    },
+    createObject: (body) => apiRequest(CREATE_JOB_URL, accessToken, { method: "POST", body: JSON.stringify(body) }),
+  }), [jobs, jobsLoading, reload, accessToken]);
+
   if (error) return <StudioStatus onBack={onBack} message={error} isError />;
   if (!loaded) return <StudioStatus onBack={onBack} message="Opening your property…" />;
 
   return (
-    <Suspense fallback={<StudioStatus onBack={onBack} message="Preparing Studio…" />}>
-      <StudioViewer
-        jobId={propertyId}
-        prompt={loaded.title}
-        initialScene={loaded.scene}
-        initialUnderlayImages={loaded.underlayImages}
-        initialEditor={loaded.editor}
-        persistence={persistence}
-        theme={theme}
-        onToggleTheme={onToggleTheme}
-        onBack={onBack}
-      />
-    </Suspense>
+    <ObjectLibraryContext value={library}>
+      <Suspense fallback={<StudioStatus onBack={onBack} message="Preparing Studio…" />}>
+        <StudioViewer
+          jobId={propertyId}
+          prompt={loaded.title}
+          initialScene={loaded.scene}
+          initialUnderlayImages={loaded.underlayImages}
+          initialEditor={loaded.editor}
+          persistence={persistence}
+          theme={theme}
+          onToggleTheme={onToggleTheme}
+          onBack={onBack}
+        />
+      </Suspense>
+    </ObjectLibraryContext>
   );
 }

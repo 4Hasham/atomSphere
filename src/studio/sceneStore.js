@@ -69,6 +69,23 @@ export function createSceneStore(initialDocument, initial = {}) {
         )),
       })),
 
+      // Furnishing a property: each add, move, turn or removal is one undo step.
+      addObject: (object) => edit((document) => ({ objects: [...document.objects, object] })),
+      placeObject: (id, placement) => edit((document) => ({
+        objects: document.objects.map((object) => (
+          object.id === id ? { ...object, placement: { ...object.placement, ...placement } } : object
+        )),
+      })),
+      removeObject: (id) => {
+        edit((document) => ({ objects: document.objects.filter((object) => object.id !== id) }));
+        if (get().staging.selected === id) set((state) => ({ staging: { ...state.staging, selected: null } }));
+      },
+
+      // Which placed object is selected, and what is waiting to be placed by a click:
+      // { object } for a new one, { id } to move an existing one. Not part of the document.
+      staging: { selected: null, placing: null },
+      setStaging: (patch) => set((state) => ({ staging: { ...state.staging, ...patch } })),
+
       undo: () => {
         const { document, past, future } = get();
         if (!past.length) return;

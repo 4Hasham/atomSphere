@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { apiRequest } from "./api";
-
-const MODEL_URL_API_URL = `${import.meta.env.VITE_API_URL}/requests/model-url`;
+import { MODEL_URL_API_URL } from "./stage/model";
 const StudioViewer = lazy(() => import("./studio/StudioViewer"));
 
 export default function Studio({ accessToken, jobId, prompt, sizeMeters, theme, onToggleTheme, onBack }) {

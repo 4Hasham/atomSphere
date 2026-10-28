@@ -25,6 +25,6 @@ export async function uploadPlanImage(token, id, levelId, blob, onProgress) {
 
 /** The parts of a scene document worth saving with a property. */
 export function sceneToSave(document) {
-  const { version, site, backdrop, weather, property } = document;
-  return { version, site, backdrop, weather, property };
+  const { version, site, backdrop, weather, objects, property } = document;
+  return { version, site, backdrop, weather, objects, property };
 }

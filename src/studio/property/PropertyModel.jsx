@@ -36,8 +36,10 @@ function useMaterials() {
  * Renders a property document. `level` is "all" or a level index: that level and the
  * ones below are shown, roofless, so picking a level (even the top one) cuts the house
  * open at it: the dollhouse view. The roof shows only for the whole house, with `roof` on.
+ * `children` (placed objects) share the house's frame: plan x is x, plan y is z. Pointer
+ * handlers (`events`) go on that frame, so they see clicks on the house and its objects.
  */
-export default function PropertyModel({ property, level = "all", roof = true }) {
+export default function PropertyModel({ property, level = "all", roof = true, children, ...events }) {
   const built = useMemo(() => buildProperty(property), [property]);
   useEffect(() => () => disposeProperty(built), [built]);
   const materials = useMaterials();
@@ -49,7 +51,7 @@ export default function PropertyModel({ property, level = "all", roof = true }) 
   const centre = built.bounds.getCenter(built.bounds.min.clone());
 
   return (
-    <group position={[-centre.x, 0, -centre.z]}>
+    <group position={[-centre.x, 0, -centre.z]} {...events}>
       {built.levels.map((builtLevel, index) => index <= topVisible && (
         <group key={builtLevel.id}>
           {builtLevel.slab && (
@@ -72,6 +74,7 @@ export default function PropertyModel({ property, level = "all", roof = true }) 
       {roof && level === "all" && built.roof && (
         <mesh geometry={built.roof} material={materials.roof} castShadow receiveShadow />
       )}
+      {children}
     </group>
   );
 }

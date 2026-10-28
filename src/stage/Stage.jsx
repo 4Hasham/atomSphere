@@ -64,7 +64,7 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
     if (auth.isAuthenticated) sessionStorage.removeItem(PROPERTY_DRAFT_KEY);
   }, [auth.isAuthenticated]);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const { jobs, loading, error: jobsError, reload } = useJobs(auth, refreshKey);
+  const { jobs, loading, error: jobsError, reload } = useJobs(auth.isAuthenticated ? auth.user?.access_token : null, refreshKey);
 
   // Accepts a patch, or a function of the current draft for updates that land after an await.
   const update = (patch) => setDraft((current) => ({
@@ -265,7 +265,7 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
           and the upload API rejects requests without a signed-in owner. */}
       {uploadOpen && auth.isAuthenticated && (
         <UploadModel
-          auth={auth}
+          token={auth.user?.access_token}
           onClose={() => setUploadOpen(false)}
           onUploaded={() => {
             setUploadOpen(false);

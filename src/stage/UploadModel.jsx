@@ -14,10 +14,10 @@ function megabytes(bytes) {
 }
 
 /**
- * Upload your own .glb (signed-in users only; the shelf that opens this requires it).
- * The model is private: only its owner can get a link to view it.
+ * Upload your own .glb (signed-in users only: `token` is theirs). The model is private:
+ * only its owner can get a link to view it. `onUploaded` gets { jobId, title, sizeMeters }.
  */
-export default function UploadModel({ auth, onClose, onUploaded }) {
+export default function UploadModel({ token, onClose, onUploaded, hint = "Opens in Studio at its real size." }) {
   const [file, setFile] = useState(null);
   const [details, setDetails] = useState(null);
   const [checking, setChecking] = useState(false);
@@ -55,8 +55,7 @@ export default function UploadModel({ auth, onClose, onUploaded }) {
   }
 
   async function upload() {
-    const token = auth.user?.access_token;
-    if (!auth.isAuthenticated || !token) {
+    if (!token) {
       setError("Sign in to upload a model.");
       return;
     }
@@ -80,7 +79,7 @@ export default function UploadModel({ auth, onClose, onUploaded }) {
         method: "POST",
         body: JSON.stringify({ action: "complete", jobId }),
       });
-      onUploaded();
+      onUploaded({ jobId, title: name.trim(), sizeMeters: details.sizeMeters });
     } catch (uploadError) {
       if (jobId) {
         apiRequest(MODEL_UPLOAD_URL, token, {
@@ -214,7 +213,7 @@ export default function UploadModel({ auth, onClose, onUploaded }) {
 
       <div className="st-footer">
         <span className="st-hint">
-          {uploading ? `Uploading… ${Math.round(progress * 100)}%` : "Opens in Studio at its real size."}
+          {uploading ? `Uploading… ${Math.round(progress * 100)}%` : hint}
         </span>
         <button type="button" className="st-primary" disabled={!ready} onClick={upload}>
           {uploading ? "Uploading…" : "Upload model"}

@@ -6,13 +6,13 @@ import ThemeToggle from "../brand/ThemeToggle";
 import Backdrop from "./backdrops/Backdrop";
 import { findBackdrop, groundFor, STUDIO_SURFACES } from "./backdrops/backdrops";
 import SunLight from "./lighting/SunLight";
+import FurnishedProperty from "./objects/FurnishedProperty";
 import { DroppedModel, LoadedModel } from "./objects/SceneModel";
 import ViewerErrorBoundary from "./objects/ViewerErrorBoundary";
 import EditorPanel from "./property/editor/EditorPanel";
 import PlanEditor from "./property/editor/PlanEditor";
 import PropertyAutosave from "./property/PropertyAutosave";
 import PropertyCamera from "./property/PropertyCamera";
-import PropertyModel from "./property/PropertyModel";
 import { propertySize } from "./property/propertyDocument";
 import { createJobObject, createSceneDocument } from "./sceneDocument";
 import { createSceneStore, SceneStoreContext, useScene } from "./sceneStore";
@@ -59,9 +59,22 @@ export default function StudioViewer({
 
   useEffect(() => {
     function handleKeyDown(event) {
-      // In the floorplan editor, Esc cancels drawing instead of leaving Studio.
-      if (event.key === "Escape" && store.getState().editor.mode !== "plan") {
-        onBack();
+      // Keys in a dialog (adding an object) belong to it.
+      if (event.target instanceof Element && event.target.closest("dialog")) return;
+      const { editor, staging, setStaging, removeObject } = store.getState();
+      const inPlan = editor.mode === "plan";
+      // Esc steps back: stop placing, then clear the selection, then leave Studio. In
+      // the floorplan editor it cancels drawing instead.
+      if (event.key === "Escape" && !inPlan) {
+        if (staging.placing) setStaging({ placing: null });
+        else if (staging.selected) setStaging({ selected: null });
+        else onBack();
+        return;
+      }
+      if ((event.key === "Delete" || event.key === "Backspace") && !inPlan && staging.selected
+        && !isTextEntry(event.target)) {
+        event.preventDefault();
+        removeObject(staging.selected);
         return;
       }
       if (!(event.ctrlKey || event.metaKey) || isTextEntry(event.target)) return;
@@ -115,6 +128,11 @@ function StudioWorkspace({ modelUrls, theme }) {
   const propertyView = useScene((state) => state.propertyView);
   const editorMode = useScene((state) => state.editor.mode);
   const setEditor = useScene((state) => state.setEditor);
+  const staging = useScene((state) => state.staging);
+  const setStaging = useScene((state) => state.setStaging);
+  const setPropertyView = useScene((state) => state.setPropertyView);
+  // Objects placed in a property render with it; any others stand at the centre.
+  const looseObjects = objects.filter((object) => !object.placement);
   const terrainStatus = useTerrain(site);
   const terrain = terrainStatus.terrain;
   const scenePreset = SCENE_PRESETS.find((preset) => preset.id === presetId) ?? SCENE_PRESETS[0];
@@ -122,9 +140,7 @@ function StudioWorkspace({ modelUrls, theme }) {
     ...objects.map((object) => object.sizeMeters),
     property ? propertySize(property) : 0,
   );
-  const propertyModel = property && (
-    <PropertyModel property={property} level={propertyView.level} roof={propertyView.roof} />
-  );
+  const propertyModel = property && <FurnishedProperty />;
   // An image backdrop lights the scene itself; the preset's light rig is only for the
   // grid and terrain. Its sun still casts the shadows, aimed where the photo's sun is.
   const imageLit = Boolean(backdrop.file);
@@ -143,7 +159,10 @@ function StudioWorkspace({ modelUrls, theme }) {
           role="tab"
           aria-selected={editorMode === mode}
           className={editorMode === mode ? "is-on" : ""}
-          onClick={() => setEditor({ mode, selection: null })}
+          onClick={() => {
+            setEditor({ mode, selection: null });
+            setStaging({ placing: null, selected: null });
+          }}
         >
           {text}
         </button>
@@ -263,7 +282,7 @@ function StudioWorkspace({ modelUrls, theme }) {
                     <>
                       {/* The site's ground height is y = 0, where the property stands. */}
                       {propertyModel}
-                      {objects.map((object) => (
+                      {looseObjects.map((object) => (
                         <DroppedModel
                           key={`${object.id}-${siteKey}-${object.sizeMeters}`}
                           url={modelUrls[object.source.jobId]}
@@ -272,10 +291,11 @@ function StudioWorkspace({ modelUrls, theme }) {
                       ))}
                     </>
                   ) : (
-                    // Keyed on model sizes so a resize reframes the camera.
-                    <Bounds key={objects.map((object) => object.sizeMeters).join()} fit observe margin={1.25}>
+                    // Keyed on model sizes so a resize reframes the camera (not for
+                    // objects placed in a property: arranging them keeps the view).
+                    <Bounds key={looseObjects.map((object) => object.sizeMeters).join()} fit observe margin={1.25}>
                       {propertyModel}
-                      {objects.map((object) => (
+                      {looseObjects.map((object) => (
                         <LoadedModel
                           key={object.id}
                           url={modelUrls[object.source.jobId]}
@@ -291,7 +311,8 @@ function StudioWorkspace({ modelUrls, theme }) {
             {property && <PropertyCamera level={propertyView.level} />}
             <OrbitControls
               makeDefault
-              autoRotate={!terrain}
+              // Holds still while furnishing, so clicks land where they're aimed.
+              autoRotate={!terrain && !staging.placing && !staging.selected}
               autoRotateSpeed={0.7}
               enableDamping
               minDistance={terrain ? 3 : undefined}
@@ -302,7 +323,29 @@ function StudioWorkspace({ modelUrls, theme }) {
           </Canvas>
         </div>
         {modeSwitch}
-        <p className="viewer-hint">{ORBIT_HINT}</p>
+        {staging.placing ? (
+          <div className="viewer-placing" role="status">
+            <span>Click where it goes: a floor, the roof or the ground outside.</span>
+            <div className="viewer-placing-floors" role="group" aria-label="Show floor">
+              {[["all", "Whole house"], ...property.levels.map((level, index) => [String(index), level.name])].map(([value, text]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={propertyView.level === value}
+                  className={propertyView.level === value ? "is-on" : ""}
+                  onClick={() => setPropertyView({ level: value })}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="viewer-placing-cancel" onClick={() => setStaging({ placing: null })}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <p className="viewer-hint">{ORBIT_HINT}</p>
+        )}
       </div>
       <SceneControls terrainStatus={terrainStatus} />
     </div>

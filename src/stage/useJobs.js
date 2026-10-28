@@ -1,15 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../api";
 import { JOBS_API_URL, normalizeJobs } from "./model";
 
-/** Loads the signed-in user's jobs and polls every 10 seconds. */
-export default function useJobs(auth, refreshKey) {
+/** Loads the signed-in user's jobs and polls every 10 seconds; `token` is null when signed out. */
+export default function useJobs(token, refreshKey) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
-  const token = auth.user?.access_token;
-  const signedIn = Boolean(auth.isAuthenticated && token);
+  const signedIn = Boolean(token);
 
   useEffect(() => {
     if (!signedIn) return undefined;
@@ -42,10 +41,12 @@ export default function useJobs(auth, refreshKey) {
     };
   }, [signedIn, token, refreshKey, retry]);
 
+  const reload = useCallback(() => setRetry((value) => value + 1), []);
+
   return {
     jobs: signedIn ? jobs : [],
     loading: signedIn && loading,
     error: signedIn ? error : "",
-    reload: () => setRetry((value) => value + 1),
+    reload,
   };
 }

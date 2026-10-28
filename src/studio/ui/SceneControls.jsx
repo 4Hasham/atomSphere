@@ -2,6 +2,7 @@ import { useState } from "react";
 import { RedoIcon, UndoIcon } from "../../brand/icons";
 import { BACKDROPS, findBackdrop } from "../backdrops/backdrops";
 import { isValidSite, MAX_MERCATOR_LATITUDE } from "../geo";
+import FurnishSection from "../objects/FurnishSection";
 import { useScene } from "../sceneStore";
 import { SCENE_PRESETS } from "../weather/scenePresets";
 
@@ -9,6 +10,7 @@ export default function SceneControls({ terrainStatus }) {
   const site = useScene((state) => state.document.site);
   const backdrop = findBackdrop(useScene((state) => state.document.backdrop));
   const objects = useScene((state) => state.document.objects);
+  const hasProperty = useScene((state) => Boolean(state.document.property));
   const presetId = useScene((state) => state.document.weather.presetId);
   const setBackdrop = useScene((state) => state.setBackdrop);
   const setWeatherPreset = useScene((state) => state.setWeatherPreset);
@@ -20,7 +22,7 @@ export default function SceneControls({ terrainStatus }) {
   const terrain = terrainStatus.terrain;
 
   return (
-    <aside className="scene-controls" aria-labelledby="scene-controls-title">
+    <aside className="scene-controls" aria-label="Scene controls">
       <div className="scene-controls-heading">
         <div className="scene-controls-top">
           <span className="terrain-label">SCENE CONTROLS</span>
@@ -47,9 +49,19 @@ export default function SceneControls({ terrainStatus }) {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* A property's own controls come first: how it's shown, and furnishing it. */}
+      <PropertyViewControls />
+      <FurnishSection SizeControl={ModelSizeControl} />
+
+      <section
+        className={hasProperty ? "terrain-section" : "scene-controls-heading"}
+        aria-labelledby="scene-controls-title"
+      >
         <h3 id="scene-controls-title">Scene presets</h3>
         <p>Choose a weather and lighting setup for your 3D scene.</p>
-      </div>
+      </section>
       <div className="scene-preset-control">
         <label htmlFor="scene-preset">Preset</label>
         <select
@@ -86,11 +98,10 @@ export default function SceneControls({ terrainStatus }) {
         )}
       </div>
 
-      {objects.map((object) => (
+      {objects.filter((object) => !object.placement).map((object) => (
         <ModelSizeControl key={`${object.id}-${object.sizeMeters}`} object={object} />
       ))}
 
-      <PropertyViewControls />
 
       <section className="terrain-section" aria-labelledby="terrain-title">
         <h3 id="terrain-title">Terrain backdrop</h3>
@@ -138,7 +149,7 @@ function ModelSizeControl({ object }) {
         apply();
       }}
     >
-      <label htmlFor={inputId}>Model size (m)</label>
+      <label htmlFor={inputId}>{object.placement ? "Size (m)" : "Model size (m)"}</label>
       <input
         id={inputId}
         type="number"
@@ -149,7 +160,11 @@ function ModelSizeControl({ object }) {
         onChange={(event) => setValue(event.target.value)}
         onBlur={apply}
       />
-      <p>Length of the model&apos;s longest side. A car is about 4.5 m, a house 10–20 m.</p>
+      <p>
+        {object.placement
+          ? "Its longest side. A sofa is about 2 m, a car 4.5 m."
+          : "Length of the model's longest side. A car is about 4.5 m, a house 10–20 m."}
+      </p>
     </form>
   );
 }

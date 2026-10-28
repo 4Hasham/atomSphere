@@ -4,6 +4,7 @@ export const API_URL = import.meta.env.VITE_API_URL;
 export const JOBS_API_URL = `${API_URL}/requests`;
 export const CREATE_JOB_URL = `${API_URL}/meteoclone-add-request`;
 export const MODEL_UPLOAD_URL = `${API_URL}/model-upload`;
+export const MODEL_URL_API_URL = `${API_URL}/requests/model-url`;
 export const DRAFT_STORAGE_KEY = "atomsphere_pending_draft";
 // A property's name kept through the Cognito redirect (the plan file can't be).
 export const PROPERTY_DRAFT_KEY = "atomsphere_pending_property";
@@ -35,16 +36,17 @@ export const INPUT_MODES = [
   { id: "multiview", label: "3 photos", hint: "Front, left, back" },
 ];
 
+// size: a typical largest side in metres, where a new object starts in a property.
 export const MODEL_CATEGORIES = [
-  { value: "building_structure", label: "Buildings", noun: "a building", item: "Building", hint: "Architecture & structures" },
-  { value: "furniture_decor", label: "Furniture", noun: "furniture", item: "Furniture piece", hint: "Home & decor" },
-  { value: "vehicle", label: "Vehicles", noun: "a vehicle", item: "Vehicle", hint: "Cars, bikes & more" },
-  { value: "consumer_product", label: "Products", noun: "a product", item: "Product", hint: "Everyday objects" },
-  { value: "mechanical_device", label: "Machines", noun: "a machine", item: "Machine", hint: "Robots & mechanisms" },
-  { value: "home_appliance", label: "Appliances", noun: "an appliance", item: "Appliance", hint: "Home electronics" },
-  { value: "character_creature", label: "Characters", noun: "a character", item: "Character", hint: "Creatures & people" },
-  { value: "nature_landscape", label: "Nature", noun: "something from nature", item: "Nature scene", hint: "Landscapes & plants" },
-  { value: "other", label: "Something else", noun: "something new", item: "Model", hint: "Any other idea" },
+  { value: "building_structure", label: "Buildings", noun: "a building", item: "Building", hint: "Architecture & structures", size: 10 },
+  { value: "furniture_decor", label: "Furniture", noun: "furniture", item: "Furniture piece", hint: "Home & decor", size: 1.8 },
+  { value: "vehicle", label: "Vehicles", noun: "a vehicle", item: "Vehicle", hint: "Cars, bikes & more", size: 4.5 },
+  { value: "consumer_product", label: "Products", noun: "a product", item: "Product", hint: "Everyday objects", size: 0.5 },
+  { value: "mechanical_device", label: "Machines", noun: "a machine", item: "Machine", hint: "Robots & mechanisms", size: 1.5 },
+  { value: "home_appliance", label: "Appliances", noun: "an appliance", item: "Appliance", hint: "Home electronics", size: 0.9 },
+  { value: "character_creature", label: "Characters", noun: "a character", item: "Character", hint: "Creatures & people", size: 1.7 },
+  { value: "nature_landscape", label: "Nature", noun: "something from nature", item: "Nature scene", hint: "Landscapes & plants", size: 3 },
+  { value: "other", label: "Something else", noun: "something new", item: "Model", hint: "Any other idea", size: 1.5 },
 ];
 
 export const PLANS = [
@@ -257,3 +259,8 @@ export const EMPTY_DRAFT = {
   category: "",
   plan: "standard",
 };
+
+/** A job's size for placing it in a property: its real size if known, else typical. */
+export function jobSize(job) {
+  return Number(job.sizeMeters) > 0 ? Number(job.sizeMeters) : findCategory(job.category)?.size ?? 1.5;
+}

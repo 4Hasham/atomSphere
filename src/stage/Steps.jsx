@@ -91,7 +91,7 @@ function Footer({ hint, hintTone, children }) {
   );
 }
 
-function PhotoSlot({ id, file, title, caption, tall, onPick, onRemove }) {
+export function PhotoSlot({ id, file, title, caption, tall, onPick, onRemove }) {
   const preview = useObjectUrl(file);
   const [dragging, setDragging] = useState(false);
 

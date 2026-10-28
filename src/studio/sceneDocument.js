@@ -11,9 +11,15 @@ export const DEFAULT_MODEL_SIZE_METERS = 4.5;
 //   site: { latitude, longitude } | null,   // origin of the world frame (see geo.js)
 //   backdrop: "none" | a backdrops.js id,
 //   weather: { presetId },
-//   objects: [{ id, name, sizeMeters, source: { type: "job", jobId } }],  // sizeMeters: largest side
+//   objects: [{ id, name, sizeMeters, source: { type: "job", jobId }, placement? }],  // sizeMeters: largest side
 //   property: a property document (property/propertyDocument.js) | null,
 // }
+//
+// In a property, every object has a placement in the property's plan coordinates, so it
+// stays put when walls change and hides with its floor when the house is cut open:
+//   placement: { level: index | null, at: [x, y], height, rotation }
+//   level: the floor it stands on, or null for the ground outside; height: metres above
+//   that floor (0 on the floor, more on a roof or a table); rotation: degrees about up.
 export function createSceneDocument({ objects = [], property = null } = {}) {
   return {
     version: SCENE_DOCUMENT_VERSION,
@@ -39,5 +45,14 @@ export function createJobObject(jobId, name, sizeMeters) {
     name,
     sizeMeters: Math.round(size * 100) / 100,
     source: { type: "job", jobId },
+  };
+}
+
+/** An object placed in a property (see placement above). */
+export function createPlacedObject({ jobId, name, sizeMeters }, placement) {
+  return {
+    ...createJobObject(jobId, name, sizeMeters),
+    id: `object-${crypto.randomUUID()}`,
+    placement: { rotation: 0, ...placement },
   };
 }

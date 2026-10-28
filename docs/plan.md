@@ -100,10 +100,11 @@ Planned additions: share links (#17), credits and local payments (#48, #49), AR 
 
 * **Furnish a property (#62):** in a property's Studio, *Add an object* picks one of your objects or makes one (describe it, 1 or 3 photos, upload a .glb); a click places it on a floor, the roof or the ground outside; size, turn, move, remove, undo. Placements are stored in the property's plan coordinates (floor + height), so they survive wall edits and hide with their floor in the dollhouse view. Objects still being made show as placeholders and fill in when ready (the client picks the job id, so no backend change was needed).
 * **Property-first Stage, Shelf and landing (#63, #64):** see Positioning above.
+* **In-app sign up / sign in (#66):** email + password, emailed 6-digit code, forgot password, all inside atomSphere (`src/auth/`) against the Cognito user-pool API (USER_AUTH password flow, refresh tokens, revoke on sign-out); no hosted page or redirect, so a draft (plan file, photos) survives signing in. `preSignUp.js` refuses a sign-up whose email already has a verified account.
 * **Floorplan input & saving (#52):** Floorplan is the first Stage input (name + optional PDF / image); properties are saved per user (scene JSON and plan images in the private bucket, via `properties.js`) and autosaved from Studio; they live on the Shelf. PDFs are drawn in the browser with pdf.js. Deploy: #60.
 
 **Next** (per `marketing.md` §5, the minimum before outreach: share link, walkthrough, one exterior finish; order agreed: restructure (done), share link, then AI floorplan reading)
-0. **In-app sign up / sign in (#66):** email + password forms inside atomSphere (verification code, forgot password) instead of the Cognito hosted page; same Cognito tokens, so the API is unchanged. Needs ALLOW_USER_SRP_AUTH on the app client.
+0. **Deploy the pre sign-up trigger (#67)** and move Cognito's emails to SES (#68): Cognito's own sender allows about 50 emails a day.
 1. **Share a property as a link (#17).** Must also sign the placed objects' models for viewers. Licence: Hunyuan3D (Standard) models may not be shown in the UK / EU (`marketing.md` §9), so a shared property either uses Meshy (Polished) objects or hides Hunyuan ones for viewers there.
 2. **Plan view & walkthrough (#53):** plan view with names, areas, dimensions and PNG export; first-person walkthrough with tap-to-teleport between rooms; stairs.
 3. **Exterior from photos** (how the house's real look gets in). The plan gives the shape and rooms; the user's exterior photos give the appearance:

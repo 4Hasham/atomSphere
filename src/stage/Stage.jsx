@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { apiRequest } from "../api";
 import Logo from "../brand/Logo";
 import { PlusIcon, ShelfIcon } from "../brand/icons";
@@ -17,10 +17,8 @@ import { AccountStep, CategoryStep, InputStep, PaymentStep } from "./Steps";
 import useTypewriter from "./useTypewriter";
 import {
   CREATE_JOB_URL,
-  DRAFT_STORAGE_KEY,
   EMPTY_DRAFT,
   INPUT_MODES,
-  PROPERTY_DRAFT_KEY,
   STEPS,
   buildRequestBody,
   findCategory,
@@ -43,26 +41,11 @@ function initialDraft() {
   return INPUT_MODES.some((item) => item.id === mode) ? { ...EMPTY_DRAFT, mode } : EMPTY_DRAFT;
 }
 
-/** A property name kept through the sign-in redirect, if any. */
-function pendingPropertyDraft() {
-  try {
-    const name = JSON.parse(sessionStorage.getItem(PROPERTY_DRAFT_KEY) || "null")?.name;
-    return name ? { ...EMPTY_DRAFT, mode: "floorplan", name } : null;
-  } catch {
-    return null;
-  }
-}
-
-export default function Stage({ auth, theme, toggleTheme, step, setStep, refreshKey, onCreated, onOpenModel, onOpenProperty }) {
-  const [draft, setDraft] = useState(() => pendingPropertyDraft() ?? initialDraft());
+export default function Stage({ auth, theme, toggleTheme, step, setStep, refreshKey, onCreated, onOpenModel, onOpenProperty, onSignIn }) {
+  const [draft, setDraft] = useState(initialDraft);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState("");
-
-  // Back from sign-in with a property name kept: it's restored above; drop the copy.
-  useEffect(() => {
-    if (auth.isAuthenticated) sessionStorage.removeItem(PROPERTY_DRAFT_KEY);
-  }, [auth.isAuthenticated]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const { jobs, loading, error: jobsError, reload } = useJobs(auth.isAuthenticated ? auth.user?.access_token : null, refreshKey);
 
@@ -94,16 +77,12 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
   }
 
   // Floorplan: create the property, upload the plan if one was picked, and open Studio.
-  async function createPropertyFlow() {
+  // Both flows take the session when called straight after signing in (see AccountStep);
+  // from the button they get the click event and use the current one.
+  async function createPropertyFlow(signedIn) {
     setError("");
     const name = draft.name.trim();
-    if (!auth.isAuthenticated) {
-      sessionStorage.setItem(PROPERTY_DRAFT_KEY, JSON.stringify({ name }));
-      setSubmitting(true);
-      await auth.signinRedirect();
-      return;
-    }
-    const token = auth.user?.access_token;
+    const token = signedIn?.accessToken ?? auth.user?.access_token;
     setSubmitting(true);
     try {
       if (!token) throw new Error("Your session expired. Please sign in again.");
@@ -129,29 +108,18 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
     }
   }
 
-  async function submit() {
+  async function submit(signedIn) {
     setError("");
     setSubmitting(true);
     try {
       const body = await buildRequestBody(draft);
-
-      if (!auth.isAuthenticated) {
-        // Keep the draft through the Cognito redirect; App submits it on return.
-        sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(body));
-        await auth.signinRedirect();
-        return;
-      }
-
-      const token = auth.user?.access_token;
+      const token = signedIn?.accessToken ?? auth.user?.access_token;
       if (!token) throw new Error("Your session expired. Please sign in again.");
       await apiRequest(CREATE_JOB_URL, token, { method: "POST", body: JSON.stringify(body) });
       setDraft(EMPTY_DRAFT);
       onCreated();
     } catch (submitError) {
-      const quota = submitError?.name === "QuotaExceededError";
-      setError(quota
-        ? "These photos are too large to keep through sign-in. Sign in first, then try again."
-        : submitError.message || "Couldn't start generation. Please try again.");
+      setError(submitError.message || "Couldn't start generation. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -254,9 +222,9 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
           ))}
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
           {auth.isAuthenticated ? (
-            <AccountMenu email={email} onSignOut={() => { setStep("input"); auth.removeUser(); }} />
+            <AccountMenu email={email} onSignOut={() => { setStep("input"); auth.signOut(); }} />
           ) : (
-            <button type="button" className="st-pill" onClick={() => auth.signinRedirect()}>Sign in</button>
+            <button type="button" className="st-pill" onClick={onSignIn}>Sign in</button>
           )}
         </div>
       </header>
@@ -316,6 +284,8 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
               auth={auth}
               submitting={submitting}
               onSubmit={isProperty ? createPropertyFlow : submit}
+              // Carry straight on, with the new session (this render's `auth` predates it).
+              onSignedIn={(session) => (isProperty ? createPropertyFlow : submit)(session)}
               property={isProperty}
               progress={progress}
             />

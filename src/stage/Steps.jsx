@@ -14,6 +14,8 @@ import {
   nameFromFile,
   photoBudget,
 } from "./model";
+import AuthForm from "../auth/AuthForm";
+import "../auth/auth.css";
 import prepareImage from "./prepareImage";
 
 // Three ways in, not three steps: each mode gets its own icon.
@@ -369,8 +371,7 @@ export function PaymentStep({ draft, update, onNext }) {
   );
 }
 
-export function AccountStep({ auth, submitting, onSubmit, property = false, progress = "" }) {
-  const [tab, setTab] = useState("signup");
+export function AccountStep({ auth, submitting, onSubmit, onSignedIn, property = false, progress = "" }) {
   const email = auth.user?.profile?.email;
 
   if (auth.isAuthenticated) {
@@ -392,24 +393,17 @@ export function AccountStep({ auth, submitting, onSubmit, property = false, prog
 
   return (
     <>
-      <div role="tablist" aria-label="Account" className="st-tabs st-tabs-small">
-        <button type="button" role="tab" aria-selected={tab === "signup"} className={tab === "signup" ? "is-on" : ""} onClick={() => setTab("signup")}>
-          <b>Create account</b>
-        </button>
-        <button type="button" role="tab" aria-selected={tab === "signin"} className={tab === "signin" ? "is-on" : ""} onClick={() => setTab("signin")}>
-          <b>Sign in</b>
-        </button>
-      </div>
       <ul className="st-trust">
         <li><b>Just your email</b>No profile, no marketing.</li>
         <li><b>Private shelf</b>Only you see your {property ? "properties" : "models"}.</li>
         <li><b>Come back anytime</b>{property ? "Pick up where you left off." : "Reopen and stage them later."}</li>
       </ul>
-      <Footer hint={property ? "Your property's name is kept; add the plan again after signing in." : "Your draft is kept. Generation starts as soon as you're in."}>
-        <button type="button" className="st-primary" onClick={onSubmit} disabled={submitting}>
-          {submitting ? "Opening sign-in…" : tab === "signup" ? `Create account & ${action}` : `Sign in & ${action}`}
-        </button>
-      </Footer>
+      {/* Signing in here keeps everything on this page, including the plan or photos. */}
+      <AuthForm
+        labels={{ signup: `Create account & ${action}`, signin: `Sign in & ${action}`, confirm: `Confirm & ${action}` }}
+        onDone={onSignedIn}
+      />
+      {submitting && <p className="st-hint" role="status">{progress || "Starting…"}</p>}
     </>
   );
 }

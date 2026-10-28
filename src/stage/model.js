@@ -5,9 +5,6 @@ export const JOBS_API_URL = `${API_URL}/requests`;
 export const CREATE_JOB_URL = `${API_URL}/meteoclone-add-request`;
 export const MODEL_UPLOAD_URL = `${API_URL}/model-upload`;
 export const MODEL_URL_API_URL = `${API_URL}/requests/model-url`;
-export const DRAFT_STORAGE_KEY = "atomsphere_pending_draft";
-// A property's name kept through the Cognito redirect (the plan file can't be).
-export const PROPERTY_DRAFT_KEY = "atomsphere_pending_property";
 
 // Photos are shrunk in the browser (see prepareImage.js), so people can pick phone
 // originals; what is uploaded must still fit the create-job request.

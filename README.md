@@ -11,7 +11,8 @@ its own is still possible from the Shelf's **Make an object** button (or
 - **Floorplan:** a name and an optional plan (PDF, JPG or PNG; PDFs are drawn with
   pdf.js in the browser). Input → Create: the property is created, the plan uploaded
   to its private folder, and Studio opens on the plan with the Scale tool. Signed-out
-  users sign in first; the name is kept through the redirect. Properties are saved by
+  users create an account or sign in on the Account step itself, and creating carries
+  straight on (the plan file stays). Properties are saved by
   `backend/lambdas/properties.js` and autosaved from Studio.
 - **Describe it / 1 photo / 3 photos:** Input → Category → Payment → Account → Shelf.
   Photos up to 20 MB are accepted and shrunk in the browser (2048 px, ~0.5–1 MB) before
@@ -32,6 +33,21 @@ Objects are saved in the property's scene with a placement in plan coordinates; 
 as placeholders until their model is ready.
 
 Code lives in `src/stage/`; Studio styles are in `src/studio/studio.css`.
+
+## Sign up and sign in
+
+Accounts are made and used inside atomSphere (`src/auth/`), not on Cognito's hosted
+page: email + password, a 6-digit code emailed to confirm a new account, and forgot
+password. The browser calls the Cognito user-pool API directly with the app client id
+(`VITE_COGNITO_AUTH_URL`, `VITE_COGNITO_CLIENT_ID`; the redirect / scope variables are
+no longer used). The app client needs `ALLOW_USER_AUTH` (password sign-in) and
+`ALLOW_REFRESH_TOKEN_AUTH`, and no client secret. The session (Cognito's tokens) is kept
+in localStorage and refreshed before it expires; signing out revokes it.
+
+Usernames are random (email is an alias), so people only ever type their email; older
+accounts can also sign in with their username. `backend/lambdas/preSignUp.js`, attached
+as the pool's pre sign-up trigger, refuses a sign-up whose email already has a verified
+account before any code is sent.
 
 ## Studio
 

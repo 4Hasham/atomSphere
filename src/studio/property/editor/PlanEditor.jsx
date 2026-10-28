@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useScene } from "../../sceneStore";
-import { findRoomType, polygonArea, EXTERIOR_WALL, INTERIOR_WALL } from "../propertyDocument";
+import { findRoomType, isOpenAbove, polygonArea, roomsOpenThrough, EXTERIOR_WALL, INTERIOR_WALL } from "../propertyDocument";
 import {
   addOpening,
   addRoom,
@@ -465,6 +465,14 @@ export default function PlanEditor() {
             <line key={wall.id} x1={wall.a[0]} y1={wall.a[1]} x2={wall.b[0]} y2={wall.b[1]} strokeWidth={wall.thickness} className="pe-wall-below" />
           ))}
 
+          {/* Rooms below that are open through this floor: a gap in it, so don't build there. */}
+          {levelIndex > 0 && roomsOpenThrough(property, levelIndex - 1).map((room) => (
+            <g key={`void-${room.id}`}>
+              <polygon points={points(room.polygon)} strokeWidth={1.5 * px} strokeDasharray={`${6 * px} ${4 * px}`} className="pe-void" />
+              {label("Open to below", centroid(room.polygon), { className: "pe-label is-area" })}
+            </g>
+          ))}
+
           {level.rooms.map((room) => (
             <g key={room.id}>
               <polygon
@@ -472,9 +480,14 @@ export default function PlanEditor() {
                 fill={findRoomType(room.type).color}
                 className={`pe-room ${isSelected("room", room.id) ? "is-selected" : ""}`}
                 strokeWidth={isSelected("room", room.id) ? 2 * px : px}
+                strokeDasharray={isOpenAbove(room) && !isSelected("room", room.id) ? `${6 * px} ${4 * px}` : undefined}
               />
               {label(room.name, centroid(room.polygon), { dy: -7 * px, className: "pe-label is-room" })}
-              {label(formatArea(polygonArea(room.polygon), unit), centroid(room.polygon), { dy: 8 * px, className: "pe-label is-area" })}
+              {label(
+                isOpenAbove(room) ? `${formatArea(polygonArea(room.polygon), unit)} · open above` : formatArea(polygonArea(room.polygon), unit),
+                centroid(room.polygon),
+                { dy: 8 * px, className: "pe-label is-area" },
+              )}
             </g>
           ))}
 

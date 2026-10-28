@@ -583,6 +583,11 @@
   fill-opacity: 0.8;
 }
 
+.pe-void {
+  fill: none;
+  stroke: var(--text-faint);
+}
+
 .pe-room-draft {
   fill: rgba(47, 111, 223, 0.12);
   stroke: #2f6fdf;

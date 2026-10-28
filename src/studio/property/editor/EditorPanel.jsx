@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { RedoIcon, UndoIcon } from "../../../brand/icons";
 import { useScene } from "../../sceneStore";
-import { EXTERIOR_WALL, INTERIOR_WALL, ROOM_TYPES, polygonArea } from "../propertyDocument";
+import { EXTERIOR_WALL, INTERIOR_WALL, ROOM_TYPES, isOpenAbove, polygonArea } from "../propertyDocument";
 import {
   addLevel,
   moveCorner,
@@ -427,6 +427,19 @@ function SelectionSection({ level, levelIndex, selection, unit, editProperty, cl
           {ROOM_TYPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
         </select>
       </Field>
+      <label className="scene-toggle">
+        <input
+          type="checkbox"
+          checked={isOpenAbove(room)}
+          onChange={(event) => editProperty((p) => updateRoom(p, levelIndex, room.id, { openAbove: event.target.checked }))}
+        />
+        <span>Open above</span>
+      </label>
+      <p className="terrain-description">
+        {room.type === "courtyard"
+          ? "Open to the sky: every floor above and the roof leave a gap over it."
+          : "No ceiling: the floor (or roof) directly above leaves a gap, for a double-height room or a stairwell."}
+      </p>
       <p className="terrain-description">Area {formatArea(polygonArea(room.polygon), unit)}</p>
       <button
         type="button"

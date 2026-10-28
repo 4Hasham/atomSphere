@@ -1,8 +1,8 @@
 // Turns a property document into three.js geometry. Pure (no React, no scene), so it
 // can be tested on its own and rebuilt whenever the document changes.
-import { Box3, BoxGeometry, ExtrudeGeometry, Matrix4, Shape, ShapeGeometry, Vector3 } from "three";
+import { Box3, BoxGeometry, ExtrudeGeometry, Matrix4, Path, Shape, ShapeGeometry, Vector3 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { levelElevations } from "./propertyDocument";
+import { levelElevations, roomsOpenThrough } from "./propertyDocument";
 
 const EPSILON = 1e-3;
 const GLASS_THICKNESS = 0.02;
@@ -79,8 +79,24 @@ function boxesToGeometry(boxes, depth, frame) {
 }
 
 /** Plan polygon -> horizontal shape in world space (plan y becomes world z). */
-function planShape(polygon) {
-  return new Shape(polygon.map(([x, y]) => ({ x, y: -y })));
+function planShape(polygon, holes = []) {
+  const shape = new Shape(polygon.map(([x, y]) => ({ x, y: -y })));
+  holes.forEach((hole) => shape.holes.push(new Path(hole.map(([x, y]) => ({ x, y: -y })))));
+  return shape;
+}
+
+/**
+ * Holes in the slab or roof on top of level `index`, over the rooms open through it.
+ * Only those inside `outline` (a rectangle): a hole reaching past a slab's edge has no
+ * slab around it to cut, and would break the shape.
+ */
+function holesOver(property, index, outline) {
+  if (index < 0) return [];
+  const [[x0, y0], , [x1, y1]] = outline;
+  const inside = ([x, y]) => x > x0 + EPSILON && x < x1 - EPSILON && y > y0 + EPSILON && y < y1 - EPSILON;
+  return roomsOpenThrough(property, index)
+    .map((room) => room.polygon)
+    .filter((polygon) => polygon.every(inside));
 }
 
 function horizontal(geometry, elevation) {
@@ -175,7 +191,11 @@ export default function buildProperty(property) {
     // The ground floor's slab is the plinth, down to the ground.
     const slabDepth = index === 0 ? elevation : level.slabThickness;
     const slab = outline && slabDepth > EPSILON
-      ? horizontal(new ExtrudeGeometry(planShape(outline), { depth: slabDepth, bevelEnabled: false }), elevation - slabDepth)
+      // An upper slab leaves holes over the rooms below it that are open above.
+      ? horizontal(new ExtrudeGeometry(
+        planShape(outline, holesOver(property, index - 1, outline)),
+        { depth: slabDepth, bevelEnabled: false },
+      ), elevation - slabDepth)
       : null;
     const rooms = level.rooms.map((roomItem) => ({
       room: roomItem,
@@ -198,7 +218,10 @@ export default function buildProperty(property) {
   let roof = null;
   if (top?.walls.length) {
     const roofTop = elevations.at(-1) + top.height;
-    roof = horizontal(new ExtrudeGeometry(planShape(wallBounds(top.walls)), { depth: top.slabThickness, bevelEnabled: false }), roofTop);
+    roof = horizontal(new ExtrudeGeometry(
+      planShape(wallBounds(top.walls), holesOver(property, property.levels.length - 1, wallBounds(top.walls))),
+      { depth: top.slabThickness, bevelEnabled: false },
+    ), roofTop);
     roof.computeBoundingBox();
     bounds.union(roof.boundingBox);
   }

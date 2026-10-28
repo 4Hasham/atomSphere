@@ -16,7 +16,11 @@
 //     walls: [{ id, a: [x, y], b: [x, y], thickness,
 //               openings: [{ id, type: "door" | "window", at, width, height, sill }] }],
 //               // at: distance from a to the opening's centre; sill: bottom above floor
-//     rooms: [{ id, name, type, polygon: [[x, y], ...] }],
+//     rooms: [{ id, name, type, polygon: [[x, y], ...], openAbove? }],
+//             // openAbove: no ceiling over the room. A courtyard is open to the sky
+//             // (every slab above and the roof have a hole); any other room is open
+//             // one floor up (a double-height lounge, a stairwell). Unset means the
+//             // type's default: only courtyards are open.
 //   }],
 // }
 
@@ -42,11 +46,27 @@ export const ROOM_TYPES = [
   { id: "entrance", label: "Entrance", color: "#ddd5c6" },
   { id: "store", label: "Store", color: "#d6cfc2" },
   { id: "terrace", label: "Terrace", color: "#d9d3c8" },
+  { id: "courtyard", label: "Courtyard", color: "#c9dbbd" },
   { id: "other", label: "Room", color: "#ddd8cf" },
 ];
 
 export function findRoomType(id) {
   return ROOM_TYPES.find((type) => type.id === id) ?? ROOM_TYPES.at(-1);
+}
+
+/** Whether a room has no ceiling (see openAbove above). */
+export function isOpenAbove(room) {
+  return room.openAbove ?? room.type === "courtyard";
+}
+
+/**
+ * The rooms with a gap over them in the slab (or roof) on top of level `index`: that
+ * level's rooms that are open above, and open courtyards on the floors below it.
+ */
+export function roomsOpenThrough(property, index) {
+  return property.levels.slice(0, index + 1).flatMap((level, levelIndex) => level.rooms.filter((room) => (
+    isOpenAbove(room) && (levelIndex === index || room.type === "courtyard")
+  )));
 }
 
 /** Floor-top elevation of each level, in order: each level sits on the one below, and

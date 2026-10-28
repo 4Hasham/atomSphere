@@ -15,7 +15,7 @@
   * Mid-tier real estate marketing agencies and housing societies in Islamabad/Rawalpindi (Blue Area, G-11).
   * Overseas Pakistani (NRP) buyers and portals needing remote spatial verification.
   * Architectural visualization and interior design studios (staging, quick props).
-* **Positioning to fix:** the landing page and Stage currently lead with "describe an object". Once properties can be saved (#52), lead with property mode and present object generation as "add furniture and props to your property".
+* **Positioning (done, #61):** the landing page leads with "See the house before you buy it." (from `marketing.md`) and a live 3D house; Floorplan is the first Stage input; object generation is a secondary section.
 
 ---
 
@@ -34,6 +34,7 @@
    modelUpload.js    bring-your-own .glb: start / complete / cancel
    generated.js      S3 trigger: assets/<job>.glb → status "generated"
    meshy-callback.js Meshy webhooks (text / image / multi-image)
+   properties.js     properties: create / load / save scene JSON, plan image uploads (owner-only)
    │
    ├─► [ Modal: hunyuan3d-21-pipeline (api_21.py, L40S) ]   Standard plan entry point
    │      text & 1 photo → Hunyuan3D-2.1 shape + PBR textures (2048 px albedo, metallic-roughness)
@@ -45,7 +46,7 @@
    ▼
 [ S3 ]  input bucket (uploads/) · output bucket meteoclone-3d-models (assets/ generated, user-models/ uploads,
         private; read only through modelUrl.js) · atomsphere-static (public HDRIs)
-[ DynamoDB ]  job table (owner_id GSI); property documents to be added (#52)
+[ DynamoDB ]  job table (owner_id GSI); properties are rows in it (input_mode "property")
 
 [ Studio (React Three Fiber) ]
    ├── Scene document + Zustand store with undo/redo; site-anchored geo frame (1 unit = 1 m)
@@ -55,7 +56,7 @@
    └── Property mode: 3D (whole house, dollhouse per floor, roof toggle) and Plan (trace editor)
 ```
 
-Planned additions: property save/load and plan images (#52), credits and local payments (#48, #49), AR share links (#4), weather proxy and telemetry (#21).
+Planned additions: share links (#17), credits and local payments (#48, #49), AR share links (#4), weather proxy and telemetry (#21).
 
 ---
 
@@ -96,8 +97,10 @@ Planned additions: property save/load and plan images (#52), credits and local p
 * **Trace editor before AI reading**, so AI mistakes can be corrected.
 * **Multiple storeys from the start.**
 
-**Next**
-1. **Floorplan input & saving (#52):** Floorplan on the Stage; properties saved to the user's account (DynamoDB) with plan images in private S3; on the Shelf; **PDF floorplans** (each page an image).
+* **Floorplan input & saving (#52):** Floorplan is the first Stage input (name + optional PDF / image); properties are saved per user (scene JSON and plan images in the private bucket, via `properties.js`) and autosaved from Studio; they live on the Shelf. PDFs are drawn in the browser with pdf.js. Deploy: #60.
+
+**Next** (per `marketing.md` §5, the minimum before outreach: share link, walkthrough, one exterior finish)
+1. **Share a property as a link (#17).**
 2. **Plan view & walkthrough (#53):** plan view with names, areas, dimensions and PNG export; first-person walkthrough with tap-to-teleport between rooms; stairs.
 3. **Exterior from photos** (how the house's real look gets in). The plan gives the shape and rooms; the user's exterior photos give the appearance:
    * **Materials & details (#55):** finishes per wall and floor (stone cladding, paint, marble) from a library or a patch of a photo; ready-made parts (parapet, boundary wall, gate, window frames, railings).

@@ -39,11 +39,12 @@ const AUDIENCES = [
   },
 ];
 
+// What people furnish a house with, typed out one after another.
 const OBJECT_EXAMPLES = [
-  "A teak dining table with six chairs",
-  "A rooftop water tank on a steel stand",
-  "A brass desk lamp with a folding arm",
-  "A vintage scooter in mint green",
+  "A teak sofa set for the drawing room",
+  "A white Corolla in the porch",
+  "A water tank on the roof",
+  "A king-size bed with two side tables",
 ];
 
 function ObjectDemo() {
@@ -72,7 +73,7 @@ function ObjectDemo() {
   );
 }
 
-export default function Landing({ theme, toggleTheme, onStart, onMakeObject, onSignIn }) {
+export default function Landing({ theme, toggleTheme, onStart, onSignIn }) {
   return (
     <div className="st-root lp-root">
       <div className="st-glow-pos" aria-hidden="true"><div className="st-glow" /></div>
@@ -119,6 +120,23 @@ export default function Landing({ theme, toggleTheme, onStart, onMakeObject, onS
           </div>
         </section>
 
+        <section className="lp-objects" aria-labelledby="lp-objects-title">
+          <div className="lp-objects-copy">
+            <span className="lp-eyebrow">Furnish it</span>
+            <h2 id="lp-objects-title">Stage every room from a sentence or a photo</h2>
+            <p>
+              Describe a sofa set, a car for the porch or a water tank for the roof, or show it in a
+              photo. atomSphere makes it in 3D and you place it in the house, room by room, so
+              buyers see a home, not an empty shell.
+            </p>
+            <div className="lp-actions is-left">
+              <button type="button" className="st-secondary" onClick={onStart}>Start with a floorplan</button>
+              <span className="st-hint">Objects from $3 · free while in preview</span>
+            </div>
+          </div>
+          <ObjectDemo />
+        </section>
+
         <section className="lp-section" aria-labelledby="lp-who">
           <h2 id="lp-who" className="lp-section-title">Made for property in Pakistan</h2>
           <div className="lp-steps">
@@ -131,21 +149,6 @@ export default function Landing({ theme, toggleTheme, onStart, onMakeObject, onS
           </div>
         </section>
 
-        <section className="lp-objects" aria-labelledby="lp-objects-title">
-          <div className="lp-objects-copy">
-            <span className="lp-eyebrow">Also in atomSphere</span>
-            <h2 id="lp-objects-title">3D objects from a sentence or a photo</h2>
-            <p>
-              Describe a sofa, a car or a product, or show it in one to three photos, and get a
-              3D model in minutes. Light it, set its size and place it on real terrain.
-            </p>
-            <div className="lp-actions is-left">
-              <button type="button" className="st-secondary" onClick={onMakeObject}>Make a 3D object</button>
-              <span className="st-hint">Standard $3 · Polished $5 · free while in preview</span>
-            </div>
-          </div>
-          <ObjectDemo />
-        </section>
       </main>
 
       <footer className="lp-footer">

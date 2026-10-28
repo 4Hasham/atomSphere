@@ -151,7 +151,6 @@ function App() {
         theme={theme}
         toggleTheme={toggleTheme}
         onStart={() => navigate("/create")}
-        onMakeObject={() => navigate("/create?mode=prompt")}
         onSignIn={() => auth.signinRedirect()}
       />
     );

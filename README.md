@@ -1,41 +1,53 @@
 # React + Vite
 
-## Creating a model (Stage)
+## Creating a property or a model (Stage)
 
-The home screen is a single stage with five steps shown in the header:
-**Input → Category → Payment → Account → Shelf**. A headline in the app's voice
-types in for each step over a slowly moving background (motion is skipped when
-the OS asks for reduced motion). Light and dark themes follow the OS until the
-person toggles them.
+The home screen is a single stage with the steps shown in the header. It makes a
+**property** (an explorable 3D house) from a name and a floorplan. Objects (furniture,
+cars, a water tank) are made inside a property's Studio and placed in it; making one on
+its own is still possible from the Shelf's **Make an object** button (or
+`/create?mode=prompt`), with Hunyuan3D (Standard) or Meshy (Polished).
 
-- **Input:** exactly one of: a text description, one photo, or three photos
-  (front, left, back). Photos up to 20 MB are accepted and shrunk in the browser
-  (2048 px, ~0.5–1 MB) before upload; see `src/stage/prepareImage.js`.
-- **Category:** `suggestCategory()` in `src/stage/model.js` is the hook-point
-  for automatic suggestions. Return a category value and the UI tags it
-  *Suggested*, preselects it and words the headline as a statement.
-- **Payment:** chooses Standard or Polished. No payment provider is wired in
+- **Floorplan:** a name and an optional plan (PDF, JPG or PNG; PDFs are drawn with
+  pdf.js in the browser). Input → Create: the property is created, the plan uploaded
+  to its private folder, and Studio opens on the plan with the Scale tool. Signed-out
+  users create an account or sign in on the Account step itself, and creating carries
+  straight on (the plan file stays). Properties are saved by
+  `backend/lambdas/properties.js` and autosaved from Studio.
+- **Describe it / 1 photo / 3 photos:** Input → Category → Payment → Account → Shelf.
+  Photos up to 20 MB are accepted and shrunk in the browser (2048 px, ~0.5–1 MB) before
+  upload; see `src/stage/prepareImage.js`. `suggestCategory()` in `src/stage/model.js` is
+  the hook-point for automatic category suggestions. No payment provider is wired in
   yet; the step says it's free during preview.
-- **Account:** signed-out users are sent to Cognito; the draft is kept in
-  `sessionStorage` and submitted when they come back.
-- **Shelf:** the user's jobs, polled every 10 seconds.
+- **Shelf:** the user's properties first, then their objects (the library properties
+  are furnished from), polled every 10 seconds; a ready item opens in Studio.
+
+### Furnishing a property (Studio)
+
+In a property's Studio, **Furnish & stage → Add an object** picks one of your objects
+or makes one (describe it, 1 or 3 photos, or upload a .glb). Then a click places it on a
+floor, the roof or the ground outside (the banner switches floors; Esc cancels). The
+selected object can be sized, turned, moved or removed (Delete key, undo with Ctrl+Z).
+Objects are saved in the property's scene with a placement in plan coordinates; see
+`src/studio/sceneDocument.js` and `src/studio/objects/`. Objects still being made show
+as placeholders until their model is ready.
 
 Code lives in `src/stage/`; Studio styles are in `src/studio/studio.css`.
 
-## Brand
+## Sign up and sign in
 
-- **Mark:** a solid sphere with its orbit engraved into it and one dot for the
-  atom. `src/brand/Logo.jsx` exports `Mark` (the symbol, in `currentColor`) and
-  `Logo` (mark + wordmark, set in Geist). Below 24 px it switches to a thicker
-  cut so it stays legible.
-- **Icons:** `public/favicon.svg` (adapts to light and dark tabs),
-  `favicon.ico` (16/32/48), `apple-touch-icon.png`, `icon-192.png`,
-  `icon-512.png`, `icon-maskable-512.png`, listed in `site.webmanifest`.
-- **Link previews:** `public/og-image.jpg` (1200×630). Set `VITE_SITE_URL`
-  (no trailing slash) so `og:image` resolves to an absolute URL.
-- **Landing page:** signed-out visitors to `/` see `src/landing/`;
-  *Start creating* opens the Stage at `/create`. Signed-in users go straight to
-  the Stage.
+Accounts are made and used inside atomSphere (`src/auth/`), not on Cognito's hosted
+page: email + password, a 6-digit code emailed to confirm a new account, and forgot
+password. The browser calls the Cognito user-pool API directly with the app client id
+(`VITE_COGNITO_AUTH_URL`, `VITE_COGNITO_CLIENT_ID`; the redirect / scope variables are
+no longer used). The app client needs `ALLOW_USER_AUTH` (password sign-in) and
+`ALLOW_REFRESH_TOKEN_AUTH`, and no client secret. The session (Cognito's tokens) is kept
+in localStorage and refreshed before it expires; signing out revokes it.
+
+Usernames are random (email is an alias), so people only ever type their email; older
+accounts can also sign in with their username. `backend/lambdas/preSignUp.js`, attached
+as the pool's pre sign-up trigger, refuses a sign-up whose email already has a verified
+account before any code is sent.
 
 ## Studio
 

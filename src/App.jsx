@@ -1,25 +1,32 @@
-import { Suspense, useEffect, useRef, useState } from "react";
-import { useAuth } from "react-oidc-context";
-import { apiRequest } from "./api";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { useAuth } from "./auth/useAuth";
+import SignInPage from "./auth/SignInPage";
+import PropertyStudio from "./PropertyStudio";
 import Studio, { StudioStatus } from "./Studio";
 import Landing from "./landing/Landing";
 import Stage from "./stage/Stage";
-import { CREATE_JOB_URL, DRAFT_STORAGE_KEY, jobTitle } from "./stage/model";
+import { jobTitle } from "./stage/model";
 import useTheme from "./useTheme";
 import "./studio/studio.css";
+
+// Development-only sample scenes; loaded on demand so the 3D engine stays out of the
+// landing page's bundle.
+const DemoStudio = lazy(() => import("./studio/DemoStudio"));
+
+const currentLocation = () => window.location.pathname + window.location.search;
 
 function App() {
   const auth = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [step, setStep] = useState("input");
   const [refreshKey, setRefreshKey] = useState(0);
-  const [pathname, setPathname] = useState(window.location.pathname);
-  const [notice, setNotice] = useState("");
-  const pendingSubmissionRef = useRef(false);
+  // The path and query: a new query alone (e.g. /signin?mode=signup) re-renders too.
+  const [location, setLocation] = useState(currentLocation);
+  const pathname = location.split("?")[0];
 
   useEffect(() => {
     function handlePopState() {
-      setPathname(window.location.pathname);
+      setLocation(currentLocation());
     }
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
@@ -28,50 +35,47 @@ function App() {
   useEffect(() => {
     document.title = pathname === "/studio"
       ? "Studio — atomSphere"
+      : pathname === "/signin"
+        ? "Sign in — atomSphere"
       : pathname === "/" && !auth.isAuthenticated
-        ? "atomSphere — Ideas in. 3D objects out."
+        ? "atomSphere — See the house before you buy it."
         : step === "shelf"
         ? "Shelf — atomSphere"
-        : "atomSphere — Ideas in. 3D objects out.";
+        : "atomSphere — See the house before you buy it.";
   }, [pathname, step, auth.isAuthenticated]);
 
-  // Submit a draft that was saved before the Cognito redirect, then show the shelf.
+  // /signin once signed in (a bookmark, another tab) shows the shelf's page instead.
+  const signedInOnSignInPage = pathname === "/signin" && auth.isAuthenticated;
   useEffect(() => {
-    if (!auth.isAuthenticated || pendingSubmissionRef.current) return;
-    const rawDraft = sessionStorage.getItem(DRAFT_STORAGE_KEY);
-    if (!rawDraft) return;
+    if (signedInOnSignInPage) window.history.replaceState({}, "", "/");
+  }, [signedInOnSignInPage]);
 
-    pendingSubmissionRef.current = true;
-    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
-
-    const token = auth.user?.access_token;
-    apiRequest(CREATE_JOB_URL, token, { method: "POST", body: rawDraft })
-      .then(() => {
-        setRefreshKey((key) => key + 1);
-        setStep("shelf");
-      })
-      .catch((error) => {
-        setNotice(error.message || "We couldn't start that model. Please try again.");
-      });
-  }, [auth.isAuthenticated, auth.user?.access_token]);
+  function openProperty({ id }) {
+    window.history.pushState({}, "", `/studio?${new URLSearchParams({ property: id })}`);
+    setLocation(currentLocation());
+  }
 
   function openModel(job) {
+    if (job.inputMode === "property") {
+      openProperty({ id: job.jobId });
+      return;
+    }
     const params = new URLSearchParams({ job: job.jobId, prompt: jobTitle(job) });
     // Uploaded models open at their real size; generated ones use Studio's default.
     if (job.sizeMeters) params.set("size", String(job.sizeMeters));
     window.history.pushState({}, "", `/studio?${params}`);
-    setPathname("/studio");
+    setLocation(currentLocation());
   }
 
   function navigate(path) {
     window.history.pushState({}, "", path);
-    setPathname(path);
+    setLocation(currentLocation());
     window.scrollTo(0, 0);
   }
 
   function leaveStudio() {
     window.history.pushState({}, "", "/");
-    setPathname("/");
+    setLocation(currentLocation());
     setStep("shelf");
   }
 
@@ -81,6 +85,31 @@ function App() {
         <p className="boot-text">Connecting to atomSphere…</p>
         <span className="boot-line" aria-hidden="true" />
       </main>
+    );
+  }
+
+  // Development only, until the Floorplan input exists: /studio?demo=property opens a
+  // sample two-storey house, /studio?demo=blank an empty property to trace.
+  const demo = import.meta.env.DEV && pathname === "/studio" ? new URLSearchParams(window.location.search).get("demo") : null;
+  if (demo === "property" || demo === "blank") {
+    return (
+      <Suspense fallback={<StudioStatus onBack={leaveStudio} message="Preparing Studio…" />}>
+        <DemoStudio demo={demo} theme={theme} onToggleTheme={toggleTheme} onBack={leaveStudio} />
+      </Suspense>
+    );
+  }
+
+  if (pathname === "/studio" && new URLSearchParams(window.location.search).get("property")) {
+    const propertyId = new URLSearchParams(window.location.search).get("property");
+    return (
+      <PropertyStudio
+        key={propertyId}
+        accessToken={auth.user?.access_token}
+        propertyId={propertyId}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onBack={leaveStudio}
+      />
     );
   }
 
@@ -106,39 +135,50 @@ function App() {
     );
   }
 
+  if (pathname === "/signin" && !auth.isAuthenticated) {
+    const mode = new URLSearchParams(window.location.search).get("mode") === "signup" ? "signup" : "signin";
+    return (
+      <SignInPage
+        key={mode}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        initialMode={mode}
+        onHome={() => navigate("/")}
+        onDone={() => {
+          setStep("shelf");
+          navigate("/");
+        }}
+      />
+    );
+  }
+
   if (pathname === "/" && !auth.isAuthenticated) {
     return (
       <Landing
         theme={theme}
         toggleTheme={toggleTheme}
         onStart={() => navigate("/create")}
-        onSignIn={() => auth.signinRedirect()}
+        onSignIn={() => navigate("/signin")}
       />
     );
   }
 
   return (
-    <>
-      {notice && (
-        <div className="toast" role="alert">
-          {notice}
-          <button type="button" onClick={() => setNotice("")} aria-label="Dismiss">✕</button>
-        </div>
-      )}
-      <Stage
-        auth={auth}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        step={step}
-        setStep={setStep}
-        refreshKey={refreshKey}
-        onCreated={() => {
-          setRefreshKey((key) => key + 1);
-          setStep("shelf");
-        }}
-        onOpenModel={openModel}
-      />
-    </>
+    <Stage
+      auth={auth}
+      theme={theme}
+      toggleTheme={toggleTheme}
+      step={step}
+      setStep={setStep}
+      refreshKey={refreshKey}
+      onCreated={() => {
+        setRefreshKey((key) => key + 1);
+        setStep("shelf");
+      }}
+      onOpenModel={openModel}
+      onOpenProperty={openProperty}
+      onSignIn={() => navigate("/signin")}
+    />
   );
 }
 

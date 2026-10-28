@@ -1,26 +1,15 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import { AuthProvider } from "react-oidc-context";
+import { AuthProvider } from "./auth/AuthProvider";
 import "./index.css";
-
-const cognitoAuthConfig = {
-  authority: import.meta.env.VITE_COGNITO_AUTH_URL,
-  client_id: import.meta.env.VITE_COGNITO_CLIENT_ID,
-  redirect_uri: import.meta.env.VITE_REDIRECT_URI,
-  response_type: import.meta.env.VITE_COGNITO_RESPONSE_TYPE,
-  scope: import.meta.env.VITE_COGNITO_SCOPE,
-  onSigninCallback: () => {
-    window.history.replaceState({}, document.title, window.location.pathname);
-  },
-};
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
-// wrap the application with AuthProvider
+// Sign-in happens inside the app (see src/auth/), against the Cognito user pool.
 root.render(
   <React.StrictMode>
-    <AuthProvider {...cognitoAuthConfig}>
+    <AuthProvider>
       <App />
     </AuthProvider>
   </React.StrictMode>

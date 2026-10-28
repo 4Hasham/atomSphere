@@ -4,7 +4,7 @@ export const API_URL = import.meta.env.VITE_API_URL;
 export const JOBS_API_URL = `${API_URL}/requests`;
 export const CREATE_JOB_URL = `${API_URL}/meteoclone-add-request`;
 export const MODEL_UPLOAD_URL = `${API_URL}/model-upload`;
-export const DRAFT_STORAGE_KEY = "atomsphere_pending_draft";
+export const MODEL_URL_API_URL = `${API_URL}/requests/model-url`;
 
 // Photos are shrunk in the browser (see prepareImage.js), so people can pick phone
 // originals; what is uploaded must still fit the create-job request.
@@ -24,36 +24,43 @@ export const STEPS = [
   { id: "shelf", label: "Shelf" },
 ];
 
+// Floorplan first: an explorable 3D house is atomSphere's main product. The other three
+// make objects (furniture, props) with Hunyuan3D / Meshy, mostly from inside a property;
+// on their own they're made from the shelf's Make an object (or /create?mode=prompt).
 export const INPUT_MODES = [
+  { id: "floorplan", label: "Floorplan", hint: "Image or PDF · a 3D house" },
   { id: "prompt", label: "Describe it", hint: "A sentence or two" },
   { id: "single", label: "1 photo", hint: "Quickest from an image" },
-  { id: "multiview", label: "3 photos", hint: "Front, left, back · most accurate" },
+  { id: "multiview", label: "3 photos", hint: "Front, left, back" },
 ];
 
+// size: a typical largest side in metres, where a new object starts in a property.
+export const OBJECT_MODES = INPUT_MODES.filter((mode) => mode.id !== "floorplan");
+
 export const MODEL_CATEGORIES = [
-  { value: "building_structure", label: "Buildings", noun: "a building", item: "Building", hint: "Architecture & structures" },
-  { value: "furniture_decor", label: "Furniture", noun: "furniture", item: "Furniture piece", hint: "Home & decor" },
-  { value: "vehicle", label: "Vehicles", noun: "a vehicle", item: "Vehicle", hint: "Cars, bikes & more" },
-  { value: "consumer_product", label: "Products", noun: "a product", item: "Product", hint: "Everyday objects" },
-  { value: "mechanical_device", label: "Machines", noun: "a machine", item: "Machine", hint: "Robots & mechanisms" },
-  { value: "home_appliance", label: "Appliances", noun: "an appliance", item: "Appliance", hint: "Home electronics" },
-  { value: "character_creature", label: "Characters", noun: "a character", item: "Character", hint: "Creatures & people" },
-  { value: "nature_landscape", label: "Nature", noun: "something from nature", item: "Nature scene", hint: "Landscapes & plants" },
-  { value: "other", label: "Something else", noun: "something new", item: "Model", hint: "Any other idea" },
+  { value: "building_structure", label: "Buildings", noun: "a building", item: "Building", hint: "Architecture & structures", size: 10 },
+  { value: "furniture_decor", label: "Furniture", noun: "furniture", item: "Furniture piece", hint: "Home & decor", size: 1.8 },
+  { value: "vehicle", label: "Vehicles", noun: "a vehicle", item: "Vehicle", hint: "Cars, bikes & more", size: 4.5 },
+  { value: "consumer_product", label: "Products", noun: "a product", item: "Product", hint: "Everyday objects", size: 0.5 },
+  { value: "mechanical_device", label: "Machines", noun: "a machine", item: "Machine", hint: "Robots & mechanisms", size: 1.5 },
+  { value: "home_appliance", label: "Appliances", noun: "an appliance", item: "Appliance", hint: "Home electronics", size: 0.9 },
+  { value: "character_creature", label: "Characters", noun: "a character", item: "Character", hint: "Creatures & people", size: 1.7 },
+  { value: "nature_landscape", label: "Nature", noun: "something from nature", item: "Nature scene", hint: "Landscapes & plants", size: 3 },
+  { value: "other", label: "Something else", noun: "something new", item: "Model", hint: "Any other idea", size: 1.5 },
 ];
 
 export const PLANS = [
   {
     id: "standard",
     name: "Standard",
-    price: 2,
+    price: 3,
     model: "hunyuan",
-    description: "The fastest way to test an idea, silhouette or layout. Clean baseline mesh.",
+    description: "Realistic materials that react to light. Quick to make, great for testing an idea or layout.",
   },
   {
     id: "polished",
     name: "Polished",
-    price: 4,
+    price: 5,
     model: "meshy",
     description: "Finer geometry and richer materials for production. Takes a little longer.",
   },
@@ -199,6 +206,10 @@ export async function buildRequestBody(draft) {
 
 export function inputSummary(draft) {
   const name = draft.name.trim();
+  if (draft.mode === "floorplan") {
+    const label = name.length > 40 ? `${name.slice(0, 40)}…` : name;
+    return [label, draft.planFile ? "floorplan" : "no plan yet"].filter(Boolean).join(" · ");
+  }
   const text = name || (draft.mode === "prompt" ? draft.prompt.trim() : "");
   const source = draft.mode === "single" ? "1 photo" : draft.mode === "multiview" ? "3 photos" : "";
   const label = text.length > 40 ? `${text.slice(0, 40)}…` : text;
@@ -214,6 +225,14 @@ export function inputState(draft) {
 }
 
 function contentState(draft) {
+  if (draft.mode === "floorplan") {
+    return {
+      ok: true,
+      hint: draft.planFile
+        ? "You'll set the plan's scale, then trace walls, doors and rooms over it."
+        : "Add the plan now, or start from a blank page and add it later.",
+    };
+  }
   if (draft.mode === "prompt") {
     if (!draft.prompt.trim()) return { ok: false, hint: "Write a sentence or two to continue." };
     return { ok: true, hint: "Shape, material, style. A sentence is plenty." };
@@ -230,7 +249,8 @@ function contentState(draft) {
 }
 
 export const EMPTY_DRAFT = {
-  mode: "prompt",
+  mode: "floorplan",
+  planFile: null,
   prompt: "",
   name: "",
   description: "",
@@ -239,3 +259,8 @@ export const EMPTY_DRAFT = {
   category: "",
   plan: "standard",
 };
+
+/** A job's size for placing it in a property: its real size if known, else typical. */
+export function jobSize(job) {
+  return Number(job.sizeMeters) > 0 ? Number(job.sizeMeters) : findCategory(job.category)?.size ?? 1.5;
+}

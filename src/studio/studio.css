@@ -416,6 +416,22 @@
   gap: 4px;
 }
 
+.scene-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.scene-toggle input {
+  accent-color: var(--accent);
+}
+
+.scene-toggle input:disabled + span {
+  opacity: 0.5;
+}
+
 .terrain-error {
   margin: 0;
   color: var(--danger);
@@ -425,6 +441,322 @@
 .terrain-attribution {
   opacity: 0.75;
   font-size: 0.54rem !important;
+}
+
+/* Autosave state in the Studio header. */
+.studio-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-faint);
+  font-size: 0.62rem;
+  white-space: nowrap;
+}
+
+.studio-save.is-error {
+  color: var(--danger);
+}
+
+.studio-save-retry {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.pe-upload.is-busy {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ---------- Property: 3D / Plan switch and floorplan editor ---------- */
+
+.viewer-mode {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  box-shadow: var(--soft-shadow);
+}
+
+.viewer-mode button,
+.pe-toolbar button,
+.pe-levels button {
+  height: 28px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.viewer-mode button.is-on,
+.pe-toolbar button.is-on,
+.pe-levels button.is-on {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.viewer-canvas.is-plan {
+  background: var(--card);
+}
+
+.plan-editor-wrap {
+  position: absolute;
+  inset: 0;
+}
+
+.pe-toolbar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  max-width: calc(100% - 180px);
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  box-shadow: var(--soft-shadow);
+  transform: translateX(-50%);
+}
+
+.pe-toolbar-gap {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--line);
+}
+
+.plan-editor {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+  user-select: none;
+}
+
+.plan-editor.is-select {
+  cursor: default;
+}
+
+.pe-wall {
+  stroke: var(--ink);
+  stroke-linecap: square;
+}
+
+.pe-wall.is-selected {
+  stroke: #2f6fdf;
+}
+
+.pe-wall.is-preview {
+  opacity: 0.45;
+}
+
+.pe-wall-below {
+  stroke: var(--ink);
+  stroke-linecap: square;
+  opacity: 0.08;
+}
+
+.pe-room {
+  stroke: var(--line-strong);
+  fill-opacity: 0.55;
+}
+
+.pe-room.is-selected {
+  stroke: #2f6fdf;
+  fill-opacity: 0.8;
+}
+
+.pe-void {
+  fill: none;
+  stroke: var(--text-faint);
+}
+
+.pe-room-draft {
+  fill: rgba(47, 111, 223, 0.12);
+  stroke: #2f6fdf;
+  stroke-dasharray: 0.15 0.1;
+}
+
+.pe-gap {
+  fill: var(--card);
+}
+
+.pe-door,
+.pe-window {
+  fill: none;
+  stroke: var(--ink);
+}
+
+.pe-opening.is-selected .pe-door,
+.pe-opening.is-selected .pe-window {
+  stroke: #2f6fdf;
+}
+
+.pe-opening-preview {
+  fill: rgba(47, 111, 223, 0.35);
+}
+
+.pe-corner {
+  fill: var(--card);
+  stroke: var(--ink);
+  cursor: move;
+}
+
+.pe-snap {
+  fill: none;
+  stroke: #2f6fdf;
+}
+
+.pe-snap.is-corner {
+  fill: rgba(47, 111, 223, 0.25);
+}
+
+.pe-guide {
+  stroke: #2f6fdf;
+  stroke-dasharray: 0.12 0.08;
+  opacity: 0.7;
+}
+
+.pe-scale circle {
+  fill: rgba(220, 70, 50, 0.25);
+  stroke: #dc4632;
+}
+
+.pe-scale line {
+  stroke: #dc4632;
+}
+
+.pe-label {
+  fill: var(--ink);
+  font-family: var(--font-ui);
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--card);
+  stroke-width: 0.06;
+}
+
+.pe-label.is-room {
+  font-weight: 600;
+}
+
+.pe-label.is-area {
+  fill: var(--text-muted);
+}
+
+.pe-label.is-measure {
+  fill: #2f6fdf;
+  font-weight: 600;
+}
+
+.pe-delete {
+  position: absolute;
+  z-index: 2;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--danger-line);
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--soft-shadow);
+  color: var(--danger);
+  font-size: 0.66rem;
+  font-weight: 500;
+  /* Just above the selection, so it never covers what you clicked. */
+  transform: translate(-50%, calc(-100% - 14px));
+}
+
+.pe-room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pe-room-list li {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.pe-room-list li.is-selected {
+  background: var(--field-bg-strong);
+}
+
+.pe-room-pick {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 0.7rem;
+  text-align: left;
+}
+
+.pe-room-area {
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.pe-room-delete {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-faint);
+  font-size: 0.85rem;
+}
+
+.pe-room-delete:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.pe-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pe-levels button {
+  border: 1px solid var(--line);
+}
+
+.pe-levels .pe-add {
+  border-style: dashed;
+}
+
+.pe-upload {
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.scene-preset-control input:not([type]),
+.scene-preset-control input[type="text"] {
+  width: 100%;
 }
 
 /* ---------- Toast / boot ---------- */
@@ -557,5 +889,189 @@
 
   .viewer-header h2 {
     max-width: 60vw;
+  }
+}
+
+/* ---------- Furnishing a property ---------- */
+
+.viewer-placing {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 10px;
+  width: max-content;
+  max-width: calc(100% - 20px);
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel-bg);
+  box-shadow: var(--soft-shadow);
+  color: var(--text);
+  font-size: 0.68rem;
+  transform: translateX(-50%);
+}
+
+.viewer-placing-floors {
+  display: flex;
+  gap: 2px;
+}
+
+.viewer-placing-floors button,
+.viewer-placing-cancel {
+  height: 26px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.viewer-placing-floors button.is-on {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.viewer-placing-cancel {
+  border: 1px solid var(--line);
+  background: var(--field-bg);
+}
+
+.viewer-object-label {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.viewer-object-label.is-failed {
+  border-color: rgba(255, 120, 120, 0.35);
+  color: #ffc9c9;
+}
+
+.furnish-selected {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.furnish-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.furnish-actions .terrain-clear {
+  grid-column: auto;
+}
+
+.terrain-clear.is-danger {
+  border-color: var(--danger-line);
+  color: var(--danger);
+}
+
+.terrain-clear.is-danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.add-object-tabs button {
+  min-height: 40px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.add-object-segment {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--soft);
+}
+
+.add-object-segment button {
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.add-object-segment button.is-on {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 2px var(--shade);
+}
+
+.add-object-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.add-object-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.add-object-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 4px 8px 10px;
+  border-radius: 12px;
+}
+
+.add-object-list li:hover {
+  background: var(--soft);
+}
+
+.add-object-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.add-object-name b {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-object-name span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 520px) {
+  .add-object-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .add-object-tabs {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

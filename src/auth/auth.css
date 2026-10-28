@@ -1,0 +1,92 @@
+/* In-app sign up / sign in (AuthForm), on its own page and in the Stage's account step. */
+
+.auth-main {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 40px 16px 48px;
+}
+
+.auth-headline {
+  margin: 0 0 6px;
+  font-size: clamp(30px, 6vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.auth-aside {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.auth-notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--soft);
+  color: var(--success);
+  font-size: 14px;
+}
+
+.auth-password {
+  position: relative;
+}
+
+.auth-password .st-input {
+  width: 100%;
+  padding-right: 64px;
+}
+
+.auth-show {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  transform: translateY(-50%);
+}
+
+.auth-show:hover {
+  background: var(--soft);
+  color: var(--ink);
+}
+
+.auth-code {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  letter-spacing: 0.3em;
+}
+
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  color: var(--muted);
+  font-size: 13px;
+}

@@ -91,3 +91,19 @@ export function UploadIcon({ size = 16 }) {
     </svg>
   );
 }
+
+export function PlanIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M2.75 2.75h12.5v12.5H2.75zM2.75 9h5.5M10.5 9h4.75M8.25 2.75v4M8.25 11v4.25" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function HouseIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M2.5 8.25 9 2.75l6.5 5.5M4.25 7v8.25h9.5V7M7.5 15.25v-4.5h3v4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}

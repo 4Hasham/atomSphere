@@ -6,8 +6,6 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 
 export const MAX_MODEL_BYTES = 200 * 1024 * 1024;
-// Above this, phones and AR struggle; we warn rather than refuse.
-export const HEAVY_TRIANGLE_COUNT = 1_000_000;
 
 const DRACO_DECODER_PATH = "https://www.gstatic.com/draco/versioned/decoders/1.5.5/";
 

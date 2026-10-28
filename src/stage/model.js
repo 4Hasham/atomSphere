@@ -27,8 +27,9 @@ export const STEPS = [
   { id: "shelf", label: "Shelf" },
 ];
 
-// Floorplan first: an explorable 3D house is atomSphere's main product; the other three
-// make objects (furniture, props) with Hunyuan3D / Meshy.
+// Floorplan first: an explorable 3D house is atomSphere's main product. The other three
+// make objects (furniture, props) with Hunyuan3D / Meshy, mostly from inside a property;
+// on their own they're reached from the shelf (or /create?mode=prompt).
 export const INPUT_MODES = [
   { id: "floorplan", label: "Floorplan", hint: "Image or PDF · a 3D house" },
   { id: "prompt", label: "Describe it", hint: "A sentence or two" },
@@ -37,6 +38,8 @@ export const INPUT_MODES = [
 ];
 
 // size: a typical largest side in metres, where a new object starts in a property.
+export const OBJECT_MODES = INPUT_MODES.filter((mode) => mode.id !== "floorplan");
+
 export const MODEL_CATEGORIES = [
   { value: "building_structure", label: "Buildings", noun: "a building", item: "Building", hint: "Architecture & structures", size: 10 },
   { value: "furniture_decor", label: "Furniture", noun: "furniture", item: "Furniture piece", hint: "Home & decor", size: 1.8 },

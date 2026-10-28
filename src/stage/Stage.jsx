@@ -157,21 +157,23 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
     }
   }
 
+  // Start a property (the header's + and the brand), or an object on its own (the shelf).
+  function startNew(mode) {
+    setError("");
+    update({ mode });
+    setStep("input");
+  }
+
   const activeCount = jobs.filter((job) => statusGroup(job.status) === "active").length;
+  const propertyCount = jobs.filter((job) => job.inputMode === "property").length;
   const headline = {
-    input: "What should we make?",
+    input: isProperty ? "Start with the floorplan." : "What should we make?",
     category: suggested ? `Looks like ${findCategory(suggested)?.noun}.` : "What kind of object is it?",
     payment: "Standard, or polished?",
     account: auth.isAuthenticated
       ? (isProperty ? "Ready to trace." : "Ready when you are.")
       : "Where should it live?",
-    shelf: loading
-      ? "Your shelf."
-      : activeCount > 0
-        ? "On your shelf. Shaping it now."
-        : jobs.length > 0
-          ? "Your shelf."
-          : "Your shelf is empty.",
+    shelf: loading || propertyCount > 0 ? "Your properties." : "No properties yet.",
   }[step];
   const { typed, done } = useTypewriter(headline);
 
@@ -190,7 +192,7 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
       <div className="st-floor" aria-hidden="true" />
 
       <header className="st-header">
-        <button type="button" className="st-brand" onClick={() => go("input")} aria-label="atomSphere, start a new model">
+        <button type="button" className="st-brand" onClick={() => startNew("floorplan")} aria-label="atomSphere, start a new property">
           <Logo />
         </button>
 
@@ -231,9 +233,9 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
             <button
               type="button"
               className="st-round"
-              onClick={() => go("input")}
-              aria-label="New model"
-              title="New model"
+              onClick={() => startNew("floorplan")}
+              aria-label="New property"
+              title="New property"
             >
               <PlusIcon />
             </button>
@@ -242,11 +244,11 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
               type="button"
               className="st-round st-shelf-link"
               onClick={() => go("shelf")}
-              aria-label={`Shelf, ${jobs.length} ${jobs.length === 1 ? "model" : "models"}${activeCount > 0 ? `, ${activeCount} generating` : ""}`}
+              aria-label={`Shelf, ${propertyCount} ${propertyCount === 1 ? "property" : "properties"}${activeCount > 0 ? `, ${activeCount} objects being made` : ""}`}
               title="Shelf"
             >
               <ShelfIcon />
-              {jobs.length > 0 && <span className="st-badge-count" aria-hidden="true">{jobs.length > 99 ? "99+" : jobs.length}</span>}
+              {propertyCount > 0 && <span className="st-badge-count" aria-hidden="true">{propertyCount > 99 ? "99+" : propertyCount}</span>}
               {activeCount > 0 && <span className="st-tray-dot is-busy st-badge-busy" aria-hidden="true" />}
             </button>
           ))}
@@ -288,7 +290,7 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
         </h1>
       </section>
 
-      <section className="st-convo" aria-label={step === "shelf" ? "Shelf" : "Create a model"}>
+      <section className="st-convo" aria-label={step === "shelf" ? "Shelf" : isProperty ? "Create a property" : "Make an object"}>
         {recap.length > 0 && (
           <div className="st-recap" aria-label="Your answers so far">
             {recap.map((item) => (
@@ -326,6 +328,8 @@ export default function Stage({ auth, theme, toggleTheme, step, setStep, refresh
               onReload={reload}
               onOpen={onOpenModel}
               onUpload={() => setUploadOpen(true)}
+              onNewProperty={() => startNew("floorplan")}
+              onMakeObject={() => startNew("prompt")}
             />
           )}
         </div>

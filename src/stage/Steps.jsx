@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { PhotoIcon, PhotosIcon, PlanIcon, TextIcon } from "../brand/icons";
 import { checkPlanFile, isPdf } from "../studio/property/planImage";
 import {
-  INPUT_MODES,
   MAX_DESCRIPTION_LENGTH,
   MAX_NAME_LENGTH,
   MAX_PROMPT_LENGTH,
   MODEL_CATEGORIES,
   MULTIVIEW_NAMES,
+  OBJECT_MODES,
   PLANS,
   checkImage,
   findPlan,
@@ -167,29 +167,34 @@ export function InputStep({ draft, update, status, onNext, setError }) {
     return current.name.trim() ? {} : { name: nameFromFile(file) };
   }
 
+  // A property needs only its plan and name; an object on its own picks how it's described.
+  const objectMode = draft.mode !== "floorplan";
+
   return (
     <>
-      <div role="tablist" aria-label="Input type" className="st-tabs st-modes">
-        {INPUT_MODES.map((mode) => {
-          const Icon = MODE_ICONS[mode.id];
-          return (
-            <button
-              key={mode.id}
-              type="button"
-              role="tab"
-              aria-selected={draft.mode === mode.id}
-              className={draft.mode === mode.id ? "is-on" : ""}
-              onClick={() => {
-                setError("");
-                update({ mode: mode.id });
-              }}
-            >
-              <span className="st-mode-title"><Icon /><b>{mode.label}</b></span>
-              <span className="st-mode-hint">{mode.hint}</span>
-            </button>
-          );
-        })}
-      </div>
+      {objectMode && (
+        <div role="tablist" aria-label="Input type" className="st-tabs st-modes">
+          {OBJECT_MODES.map((mode) => {
+            const Icon = MODE_ICONS[mode.id];
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                role="tab"
+                aria-selected={draft.mode === mode.id}
+                className={draft.mode === mode.id ? "is-on" : ""}
+                onClick={() => {
+                  setError("");
+                  update({ mode: mode.id });
+                }}
+              >
+                <span className="st-mode-title"><Icon /><b>{mode.label}</b></span>
+                <span className="st-mode-hint">{mode.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {draft.mode === "floorplan" && (
         <PlanSlot
@@ -286,6 +291,14 @@ export function InputStep({ draft, update, status, onNext, setError }) {
           {draft.mode === "floorplan" ? "Continue" : "Continue to category"}
         </button>
       </Footer>
+      {objectMode && (
+        <p className="st-aside">
+          This makes an object on its own.{" "}
+          <button type="button" className="st-link" onClick={() => update({ mode: "floorplan" })}>
+            Start a property instead
+          </button>
+        </p>
+      )}
     </>
   );
 }

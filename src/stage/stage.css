@@ -870,6 +870,30 @@
   gap: 10px;
 }
 
+.st-shelf-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.st-shelf-section + .st-shelf-section {
+  padding-top: 18px;
+  border-top: 1px solid var(--line-1);
+}
+
+.st-shelf-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.st-shelf-title span {
+  margin-left: 4px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .st-filters {
   display: flex;
   flex-wrap: wrap;
@@ -945,6 +969,17 @@
   width: 90px;
   height: 14px;
   filter: blur(8px);
+}
+
+.st-pedestal.is-property {
+  color: var(--muted);
+}
+
+.st-aside {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
 }
 
 .st-item.is-link:hover .st-pedestal {

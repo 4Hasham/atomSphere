@@ -2,9 +2,11 @@
 
 ## Creating a property or a model (Stage)
 
-The home screen is a single stage with the steps shown in the header. The first input,
-**Floorplan**, makes a property (an explorable 3D house); the other three make a 3D
-object with Hunyuan3D (Standard) or Meshy (Polished).
+The home screen is a single stage with the steps shown in the header. It makes a
+**property** (an explorable 3D house) from a name and a floorplan. Objects (furniture,
+cars, a water tank) are made inside a property's Studio and placed in it; making one on
+its own is still possible from the Shelf's "Make an object on its own" link (or
+`/create?mode=prompt`), with Hunyuan3D (Standard) or Meshy (Polished).
 
 - **Floorplan:** a name and an optional plan (PDF, JPG or PNG; PDFs are drawn with
   pdf.js in the browser). Input → Create: the property is created, the plan uploaded
@@ -16,8 +18,18 @@ object with Hunyuan3D (Standard) or Meshy (Polished).
   upload; see `src/stage/prepareImage.js`. `suggestCategory()` in `src/stage/model.js` is
   the hook-point for automatic category suggestions. No payment provider is wired in
   yet; the step says it's free during preview.
-- **Shelf:** the user's properties and models, polled every 10 seconds; a ready item
-  opens in Studio.
+- **Shelf:** the user's properties first, then their objects (the library properties
+  are furnished from), polled every 10 seconds; a ready item opens in Studio.
+
+### Furnishing a property (Studio)
+
+In a property's Studio, **Furnish & stage → Add an object** picks one of your objects
+or makes one (describe it, 1 or 3 photos, or upload a .glb). Then a click places it on a
+floor, the roof or the ground outside (the banner switches floors; Esc cancels). The
+selected object can be sized, turned, moved or removed (Delete key, undo with Ctrl+Z).
+Objects are saved in the property's scene with a placement in plan coordinates; see
+`src/studio/sceneDocument.js` and `src/studio/objects/`. Objects still being made show
+as placeholders until their model is ready.
 
 Code lives in `src/stage/`; Studio styles are in `src/studio/studio.css`.
 

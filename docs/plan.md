@@ -4,9 +4,9 @@
 
 ## 1. Product Overview & Vision
 * **Core value proposition:** Turn a real property's floorplan and photos into an **accurate, explorable 3D house** (floors, rooms, walls, doors, windows) that can be staged on real terrain, under real light and weather, and shared as a link or in AR.
-* **One product, two engines.** Both feed the same Studio, Shelf, accounts, AR, backdrops, terrain and weather:
-  1. **Property mode (the headline):** floorplan + photos → a structured, accurate house with rooms you can walk through. This is what real-estate customers pay for.
-  2. **Object generation (supporting):** a sentence or 1–3 photos → a 3D object via Hunyuan3D or Meshy. Approximate by nature; used for staging (furniture, cars, plants, water tanks) and for general 3D creators.
+* **Everything revolves around properties.** One product with two engines, both feeding the same Studio, Shelf, accounts, AR, backdrops, terrain and weather:
+  1. **Property mode (the product):** floorplan + photos → a structured, accurate house with rooms you can walk through. This is what real-estate customers pay for.
+  2. **Object generation (furnishing the property):** a sentence or 1–3 photos → a 3D object via Hunyuan3D or Meshy, made from inside a property and placed in it (sofas, beds, cars in the drive, water tanks on the roof). Approximate by nature. Making an object on its own still works but is kept out of sight (a small link on the Shelf, or `/create?mode=prompt`).
 * **Why floorplans don't go through Hunyuan/Meshy:** image-to-3D models return one closed shell with guessed dimensions, no interior and wavy walls on buildings. It can't be lined up with an accurate plan. Instead:
   1. The plan becomes a **property document** (traced in the editor today; AI-read later, #54).
   2. The **Studio generates the 3D building** from that document.
@@ -15,14 +15,14 @@
   * Mid-tier real estate marketing agencies and housing societies in Islamabad/Rawalpindi (Blue Area, G-11).
   * Overseas Pakistani (NRP) buyers and portals needing remote spatial verification.
   * Architectural visualization and interior design studios (staging, quick props).
-* **Positioning (done, #61):** the landing page leads with "See the house before you buy it." (from `marketing.md`) and a live 3D house; Floorplan is the first Stage input; object generation is a secondary section.
+* **Positioning (done, #61–#64):** the landing page leads with "See the house before you buy it." (from `marketing.md`) and a live 3D house; objects appear only as "Furnish it", part of the property story. The Stage creates properties only; the Shelf leads with Properties, with Objects as the library you furnish them from.
 
 ---
 
 ## 2. Technical Architecture (current)
 
 ```
-[ Browser: Landing → Stage (Input → Category → Payment → Account) → Shelf → Studio ]
+[ Browser: Landing → Stage (new property: Input → Create) → Shelf → Studio (trace, then furnish) ]
    │  photos shrunk in the browser (2048 px, EXIF rotation applied)
    │  .glb uploads go straight to S3 (presigned POST)
    ▼
@@ -53,7 +53,8 @@
    ├── Backdrops: studio grid, 6 ground-projected HDRIs (Poly Haven CC0), Mapbox terrain at a lat/lon
    ├── Weather presets: Studio, Sunny morning, Thunderstorm, Windy, Overcast, Golden hour
    ├── Objects: generated jobs and uploaded .glb files at real size
-   └── Property mode: 3D (whole house, dollhouse per floor, roof toggle) and Plan (trace editor)
+   └── Property mode: 3D (whole house, dollhouse per floor, roof toggle) and Plan (trace editor);
+       objects placed in it (floor / roof / ground outside) and saved with the property
 ```
 
 Planned additions: share links (#17), credits and local payments (#48, #49), AR share links (#4), weather proxy and telemetry (#21).
@@ -97,19 +98,21 @@ Planned additions: share links (#17), credits and local payments (#48, #49), AR 
 * **Trace editor before AI reading**, so AI mistakes can be corrected.
 * **Multiple storeys from the start.**
 
+* **Furnish a property (#62):** in a property's Studio, *Add an object* picks one of your objects or makes one (describe it, 1 or 3 photos, upload a .glb); a click places it on a floor, the roof or the ground outside; size, turn, move, remove, undo. Placements are stored in the property's plan coordinates (floor + height), so they survive wall edits and hide with their floor in the dollhouse view. Objects still being made show as placeholders and fill in when ready (the client picks the job id, so no backend change was needed).
+* **Property-first Stage, Shelf and landing (#63, #64):** see Positioning above.
 * **Floorplan input & saving (#52):** Floorplan is the first Stage input (name + optional PDF / image); properties are saved per user (scene JSON and plan images in the private bucket, via `properties.js`) and autosaved from Studio; they live on the Shelf. PDFs are drawn in the browser with pdf.js. Deploy: #60.
 
-**Next** (per `marketing.md` §5, the minimum before outreach: share link, walkthrough, one exterior finish)
-1. **Share a property as a link (#17).**
+**Next** (per `marketing.md` §5, the minimum before outreach: share link, walkthrough, one exterior finish; order agreed: restructure (done), share link, then AI floorplan reading)
+1. **Share a property as a link (#17).** Must also sign the placed objects' models for viewers. Licence: Hunyuan3D (Standard) models may not be shown in the UK / EU (`marketing.md` §9), so a shared property either uses Meshy (Polished) objects or hides Hunyuan ones for viewers there.
 2. **Plan view & walkthrough (#53):** plan view with names, areas, dimensions and PNG export; first-person walkthrough with tap-to-teleport between rooms; stairs.
 3. **Exterior from photos** (how the house's real look gets in). The plan gives the shape and rooms; the user's exterior photos give the appearance:
    * **Materials & details (#55):** finishes per wall and floor (stone cladding, paint, marble) from a library or a patch of a photo; ready-made parts (parapet, boundary wall, gate, window frames, railings).
    * **Facade photos on walls (#56):** each exterior photo is straightened and laid onto the matching wall of the 3D house.
    * **Elevation tracer (#57):** front elevation drawing or straight-on photo → balconies, chajjas, porch, columns, parapet and floor heights as real 3D parts (a plan gives none of these).
    * **AI facade detection (#58):** a vision model finds facade corners, windows, balconies and chajjas so the user only confirms and corrects them (same pattern as #54).
-4. **AI floorplan reading (#54):** floorplan image → draft property document, corrected in the trace editor.
+4. **AI floorplan reading (#54):** floorplan image → draft property document, corrected in the trace editor. Planned straight after the share link: a vision model (e.g. Claude) plus our own clean-up step, prototyped in 2–3 days against 5–10 real local plans, then about a week to make it solid. CubiCasa5k is non-commercial only, so it isn't an option.
 5. **AI photoreal stills (#59):** a "make it realistic" render of the current 3D view, guided by the user's photos, for listings and WhatsApp posts (images/short video, not navigable).
-* Later: architect imports (IFC via `web-ifc`, FBX/OBJ/SKP via #43), measure tool, flooring/paint swaps, furniture staging with generated props, interior sunlight by sun angle, room scans (RoomPlan / Polycam).
+* Later: architect imports (IFC via `web-ifc`, FBX/OBJ/SKP via #43), measure tool, flooring/paint swaps, interior sunlight by sun angle, room scans (RoomPlan / Polycam).
 * Realism ceiling: a phone browser can show a high-quality architectural visualization, not live photorealism. Photoreal output comes from server-side rendering (#59).
 
 ### Phase 5: AR — pending (#4, #7)

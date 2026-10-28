@@ -666,6 +666,20 @@
   font-size: 12px;
 }
 
+/* A note pinned to the slot's corner, e.g. "Optional". */
+.st-slot-corner {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 3px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .st-slot.is-filled {
   border-style: solid;
   border-color: var(--line-1);

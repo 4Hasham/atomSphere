@@ -98,7 +98,7 @@ export default function Landing({ theme, toggleTheme, onStart, onSignIn }) {
           </p>
 
           <Suspense fallback={<div className="lp-house is-loading"><Cube state="making" size={96} /></div>}>
-            <HeroHouse />
+            <HeroHouse theme={theme} />
           </Suspense>
 
           <div className="lp-actions">

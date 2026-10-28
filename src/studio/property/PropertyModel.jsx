@@ -3,29 +3,41 @@ import { Color, MeshPhysicalMaterial, MeshStandardMaterial } from "three";
 import buildProperty, { disposeProperty } from "./buildProperty";
 import { ROOM_TYPES } from "./propertyDocument";
 
-function useMaterials() {
-  const materials = useMemo(() => ({
-    // Plaster walls a shade darker than Studio's light backdrop, concrete slabs darker
-    // still, so floors and wall edges read against the background.
-    wall: new MeshStandardMaterial({ color: "#e2ddd3", roughness: 0.9 }),
-    slab: new MeshStandardMaterial({ color: "#9f9a91", roughness: 0.95 }),
-    roof: new MeshStandardMaterial({ color: "#b9b4aa", roughness: 0.95 }),
-    glass: new MeshPhysicalMaterial({
-      color: new Color("#a9c6d6"),
-      roughness: 0.05,
-      metalness: 0,
-      transparent: true,
-      opacity: 0.35,
-      depthWrite: false,
-    }),
-    rooms: Object.fromEntries(ROOM_TYPES.map((type) => [
-      type.id,
-      new MeshStandardMaterial({ color: type.color, roughness: 0.85 }),
-    ])),
-  }), []);
+// Colours per theme, so the house stands out from Studio's background in both: on the
+// pale light-mode backdrop, warm sandstone plaster and darker concrete; on the dark
+// backdrop, pale plaster. The plinth is stone, a shade darker than the slabs. Tinted
+// glass marks the windows from a distance.
+const PALETTES = {
+  light: { wall: "#bba684", slab: "#7f786d", plinth: "#6f685e", roof: "#968e80", glass: "#4f6f86" },
+  dark: { wall: "#e6dece", slab: "#a39d91", plinth: "#8f897e", roof: "#c2bbae", glass: "#6f93ab" },
+};
+
+function useMaterials(theme) {
+  const materials = useMemo(() => {
+    const palette = PALETTES[theme] ?? PALETTES.light;
+    return {
+      wall: new MeshStandardMaterial({ color: palette.wall, roughness: 0.9 }),
+      slab: new MeshStandardMaterial({ color: palette.slab, roughness: 0.95 }),
+      plinth: new MeshStandardMaterial({ color: palette.plinth, roughness: 1 }),
+      roof: new MeshStandardMaterial({ color: palette.roof, roughness: 0.95 }),
+      glass: new MeshPhysicalMaterial({
+        color: new Color(palette.glass),
+        roughness: 0.05,
+        metalness: 0,
+        transparent: true,
+        opacity: 0.6,
+        depthWrite: false,
+      }),
+      rooms: Object.fromEntries(ROOM_TYPES.map((type) => [
+        type.id,
+        new MeshStandardMaterial({ color: type.color, roughness: 0.85 }),
+      ])),
+    };
+  }, [theme]);
 
   useEffect(() => () => {
-    [materials.wall, materials.slab, materials.roof, materials.glass, ...Object.values(materials.rooms)]
+    [materials.wall, materials.slab, materials.plinth, materials.roof, materials.glass,
+      ...Object.values(materials.rooms)]
       .forEach((material) => material.dispose());
   }, [materials]);
 
@@ -39,10 +51,10 @@ function useMaterials() {
  * `children` (placed objects) share the house's frame: plan x is x, plan y is z. Pointer
  * handlers (`events`) go on that frame, so they see clicks on the house and its objects.
  */
-export default function PropertyModel({ property, level = "all", roof = true, children, ...events }) {
+export default function PropertyModel({ property, level = "all", roof = true, theme = "light", children, ...events }) {
   const built = useMemo(() => buildProperty(property), [property]);
   useEffect(() => () => disposeProperty(built), [built]);
-  const materials = useMaterials();
+  const materials = useMaterials(theme);
 
   const lastIndex = built.levels.length - 1;
   const topVisible = level === "all" ? lastIndex : Math.min(Number(level), lastIndex);
@@ -55,7 +67,7 @@ export default function PropertyModel({ property, level = "all", roof = true, ch
       {built.levels.map((builtLevel, index) => index <= topVisible && (
         <group key={builtLevel.id}>
           {builtLevel.slab && (
-            <mesh geometry={builtLevel.slab} material={materials.slab} castShadow receiveShadow />
+            <mesh geometry={builtLevel.slab} material={index === 0 ? materials.plinth : materials.slab} castShadow receiveShadow />
           )}
           {builtLevel.rooms.map(({ room, geometry }) => (
             <mesh

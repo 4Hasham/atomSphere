@@ -69,7 +69,8 @@ function PlanSlot({ file, onPick, onRemove, setError }) {
           event.target.value = "";
         }}
       />
-      <span className="st-slot-caption">PDF, JPG or PNG · optional</span>
+      <span className="st-slot-corner">Optional</span>
+      <span className="st-slot-caption">PDF, JPG or PNG</span>
       <strong>Drop the floorplan, or browse</strong>
       <span className="st-slot-sub">One floor now; add more floors in Studio</span>
     </label>

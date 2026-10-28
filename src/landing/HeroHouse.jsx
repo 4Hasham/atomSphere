@@ -13,7 +13,7 @@ const VIEWS = [
 const VIEW_MS = 3600;
 
 /** The sample two-storey house, made by the same builder as Studio, slowly turning. */
-export default function HeroHouse() {
+export default function HeroHouse({ theme }) {
   const property = useMemo(() => createSampleProperty(), []);
   const [view, setView] = useState(0);
   const reducedMotion = useMemo(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
@@ -47,7 +47,7 @@ export default function HeroHouse() {
         />
         <directionalLight position={[-10, 6, -8]} intensity={0.6} />
         <group position={[0, -2.2, 0]}>
-          <PropertyModel property={property} level={VIEWS[view].level} roof />
+          <PropertyModel property={property} level={VIEWS[view].level} roof theme={theme} />
           <ContactShadows position={[0, 0.005, 0]} scale={26} far={8} blur={2.4} opacity={0.35} />
         </group>
         <OrbitControls

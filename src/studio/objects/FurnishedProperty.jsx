@@ -25,7 +25,7 @@ function facesUp(event) {
  * a click on a floor, the roof or the ground outside puts it there; otherwise a click
  * selects an object (or clears the selection).
  */
-export default function FurnishedProperty() {
+export default function FurnishedProperty({ theme }) {
   const property = useScene((state) => state.document.property);
   const objects = useScene((state) => state.document.objects);
   const view = useScene((state) => state.propertyView);
@@ -79,6 +79,7 @@ export default function FurnishedProperty() {
       property={property}
       level={view.level}
       roof={view.roof}
+      theme={theme}
       onClick={handleClick}
       onPointerMove={placing ? handlePointerMove : undefined}
     >

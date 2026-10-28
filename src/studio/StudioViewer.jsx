@@ -140,7 +140,7 @@ function StudioWorkspace({ modelUrls, theme }) {
     ...objects.map((object) => object.sizeMeters),
     property ? propertySize(property) : 0,
   );
-  const propertyModel = property && <FurnishedProperty />;
+  const propertyModel = property && <FurnishedProperty theme={theme} />;
   // An image backdrop lights the scene itself; the preset's light rig is only for the
   // grid and terrain. Its sun still casts the shadows, aimed where the photo's sun is.
   const imageLit = Boolean(backdrop.file);

@@ -19,6 +19,7 @@ import {
   CREATE_JOB_URL,
   DRAFT_STORAGE_KEY,
   EMPTY_DRAFT,
+  INPUT_MODES,
   PROPERTY_DRAFT_KEY,
   STEPS,
   buildRequestBody,
@@ -36,6 +37,12 @@ const CREATE_STEPS = STEPS.filter((item) => item.id !== "shelf");
 // A property has no category or payment step (property pricing isn't set yet).
 const PROPERTY_STEPS = CREATE_STEPS.filter((item) => item.id === "input" || item.id === "account");
 
+/** The draft a visit starts with: ?mode= picks the input (e.g. from the landing page). */
+function initialDraft() {
+  const mode = new URLSearchParams(window.location.search).get("mode");
+  return INPUT_MODES.some((item) => item.id === mode) ? { ...EMPTY_DRAFT, mode } : EMPTY_DRAFT;
+}
+
 /** A property name kept through the sign-in redirect, if any. */
 function pendingPropertyDraft() {
   try {
@@ -47,7 +54,7 @@ function pendingPropertyDraft() {
 }
 
 export default function Stage({ auth, theme, toggleTheme, step, setStep, refreshKey, onCreated, onOpenModel, onOpenProperty }) {
-  const [draft, setDraft] = useState(() => pendingPropertyDraft() ?? EMPTY_DRAFT);
+  const [draft, setDraft] = useState(() => pendingPropertyDraft() ?? initialDraft());
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState("");

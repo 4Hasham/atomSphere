@@ -1,41 +1,25 @@
 # React + Vite
 
-## Creating a model (Stage)
+## Creating a property or a model (Stage)
 
-The home screen is a single stage with five steps shown in the header:
-**Input → Category → Payment → Account → Shelf**. A headline in the app's voice
-types in for each step over a slowly moving background (motion is skipped when
-the OS asks for reduced motion). Light and dark themes follow the OS until the
-person toggles them.
+The home screen is a single stage with the steps shown in the header. The first input,
+**Floorplan**, makes a property (an explorable 3D house); the other three make a 3D
+object with Hunyuan3D (Standard) or Meshy (Polished).
 
-- **Input:** exactly one of: a text description, one photo, or three photos
-  (front, left, back). Photos up to 20 MB are accepted and shrunk in the browser
-  (2048 px, ~0.5–1 MB) before upload; see `src/stage/prepareImage.js`.
-- **Category:** `suggestCategory()` in `src/stage/model.js` is the hook-point
-  for automatic suggestions. Return a category value and the UI tags it
-  *Suggested*, preselects it and words the headline as a statement.
-- **Payment:** chooses Standard or Polished. No payment provider is wired in
+- **Floorplan:** a name and an optional plan (PDF, JPG or PNG; PDFs are drawn with
+  pdf.js in the browser). Input → Create: the property is created, the plan uploaded
+  to its private folder, and Studio opens on the plan with the Scale tool. Signed-out
+  users sign in first; the name is kept through the redirect. Properties are saved by
+  `backend/lambdas/properties.js` and autosaved from Studio.
+- **Describe it / 1 photo / 3 photos:** Input → Category → Payment → Account → Shelf.
+  Photos up to 20 MB are accepted and shrunk in the browser (2048 px, ~0.5–1 MB) before
+  upload; see `src/stage/prepareImage.js`. `suggestCategory()` in `src/stage/model.js` is
+  the hook-point for automatic category suggestions. No payment provider is wired in
   yet; the step says it's free during preview.
-- **Account:** signed-out users are sent to Cognito; the draft is kept in
-  `sessionStorage` and submitted when they come back.
-- **Shelf:** the user's jobs, polled every 10 seconds.
+- **Shelf:** the user's properties and models, polled every 10 seconds; a ready item
+  opens in Studio.
 
 Code lives in `src/stage/`; Studio styles are in `src/studio/studio.css`.
-
-## Brand
-
-- **Mark:** a solid sphere with its orbit engraved into it and one dot for the
-  atom. `src/brand/Logo.jsx` exports `Mark` (the symbol, in `currentColor`) and
-  `Logo` (mark + wordmark, set in Geist). Below 24 px it switches to a thicker
-  cut so it stays legible.
-- **Icons:** `public/favicon.svg` (adapts to light and dark tabs),
-  `favicon.ico` (16/32/48), `apple-touch-icon.png`, `icon-192.png`,
-  `icon-512.png`, `icon-maskable-512.png`, listed in `site.webmanifest`.
-- **Link previews:** `public/og-image.jpg` (1200×630). Set `VITE_SITE_URL`
-  (no trailing slash) so `og:image` resolves to an absolute URL.
-- **Landing page:** signed-out visitors to `/` see `src/landing/`;
-  *Start creating* opens the Stage at `/create`. Signed-in users go straight to
-  the Stage.
 
 ## Studio
 

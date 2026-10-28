@@ -34,10 +34,10 @@ function App() {
     document.title = pathname === "/studio"
       ? "Studio — atomSphere"
       : pathname === "/" && !auth.isAuthenticated
-        ? "atomSphere — Ideas in. 3D objects out."
+        ? "atomSphere — See the house before you buy it."
         : step === "shelf"
         ? "Shelf — atomSphere"
-        : "atomSphere — Ideas in. 3D objects out.";
+        : "atomSphere — See the house before you buy it.";
   }, [pathname, step, auth.isAuthenticated]);
 
   // Submit a draft that was saved before the Cognito redirect, then show the shelf.
@@ -79,7 +79,7 @@ function App() {
 
   function navigate(path) {
     window.history.pushState({}, "", path);
-    setPathname(path);
+    setPathname(window.location.pathname);
     window.scrollTo(0, 0);
   }
 
@@ -151,6 +151,7 @@ function App() {
         theme={theme}
         toggleTheme={toggleTheme}
         onStart={() => navigate("/create")}
+        onMakeObject={() => navigate("/create?mode=prompt")}
         onSignIn={() => auth.signinRedirect()}
       />
     );

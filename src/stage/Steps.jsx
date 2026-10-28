@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { PhotoIcon, PhotosIcon, TextIcon } from "../brand/icons";
+import { PhotoIcon, PhotosIcon, PlanIcon, TextIcon } from "../brand/icons";
+import { checkPlanFile, isPdf } from "../studio/property/planImage";
 import {
   INPUT_MODES,
   MAX_DESCRIPTION_LENGTH,
@@ -16,7 +17,64 @@ import {
 import prepareImage from "./prepareImage";
 
 // Three ways in, not three steps: each mode gets its own icon.
-const MODE_ICONS = { prompt: TextIcon, single: PhotoIcon, multiview: PhotosIcon };
+const MODE_ICONS = { floorplan: PlanIcon, prompt: TextIcon, single: PhotoIcon, multiview: PhotosIcon };
+
+/** The floorplan picker: an image or PDF, optional (a property can start blank). */
+function PlanSlot({ file, onPick, onRemove, setError }) {
+  const [dragging, setDragging] = useState(false);
+  function pick(list) {
+    const picked = list?.[0];
+    if (!picked) return;
+    const problem = checkPlanFile(picked);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setError("");
+    onPick(picked);
+  }
+  if (file) {
+    return (
+      <div className="st-slot is-filled st-plan-file">
+        <strong>{file.name}</strong>
+        <span className="st-slot-sub">
+          {isPdf(file) ? "PDF" : "Image"} · {(file.size / (1024 * 1024)).toFixed(1)} MB
+        </span>
+        <button type="button" className="st-link" onClick={onRemove}>Remove</button>
+      </div>
+    );
+  }
+  return (
+    <label
+      htmlFor="st-plan"
+      className={`st-slot is-tall ${dragging ? "is-dragging" : ""}`}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDragging(false);
+        pick(event.dataTransfer.files);
+      }}
+    >
+      <input
+        id="st-plan"
+        className="sr-only"
+        type="file"
+        accept="application/pdf,image/jpeg,image/png,image/webp"
+        onChange={(event) => {
+          pick(event.target.files);
+          event.target.value = "";
+        }}
+      />
+      <span className="st-slot-caption">PDF, JPG or PNG · optional</span>
+      <strong>Drop the floorplan, or browse</strong>
+      <span className="st-slot-sub">One floor now; add more floors in Studio</span>
+    </label>
+  );
+}
 
 function useObjectUrl(file) {
   const url = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
@@ -133,6 +191,15 @@ export function InputStep({ draft, update, status, onNext, setError }) {
         })}
       </div>
 
+      {draft.mode === "floorplan" && (
+        <PlanSlot
+          file={draft.planFile}
+          setError={setError}
+          onPick={(file) => update({ planFile: file })}
+          onRemove={() => update({ planFile: null })}
+        />
+      )}
+
       {draft.mode === "prompt" && (
         <div className="st-field">
           <label htmlFor="st-prompt" className="sr-only">Describe the object</label>
@@ -191,12 +258,12 @@ export function InputStep({ draft, update, status, onNext, setError }) {
             className="st-input"
             maxLength={MAX_NAME_LENGTH}
             value={draft.name}
-            placeholder={draft.mode === "prompt" ? "Green desk lamp" : "Villa front elevation"}
+            placeholder={draft.mode === "floorplan" ? "10 marla house, Bahria Phase 8" : draft.mode === "prompt" ? "Green desk lamp" : "Villa front elevation"}
             autoComplete="off"
             onChange={(event) => update({ name: event.target.value })}
           />
         </div>
-        {draft.mode !== "prompt" && (
+        {(draft.mode === "single" || draft.mode === "multiview") && (
           <div className="st-field">
             <label htmlFor="st-description" className="st-label">
               Description <span>optional</span>
@@ -216,7 +283,7 @@ export function InputStep({ draft, update, status, onNext, setError }) {
 
       <Footer hint={status.hint} hintTone={!status.ok && draft.mode !== "prompt" ? "warn" : ""}>
         <button type="button" className="st-primary" onClick={onNext} disabled={!status.ok}>
-          Continue to category
+          {draft.mode === "floorplan" ? "Continue" : "Continue to category"}
         </button>
       </Footer>
     </>
@@ -288,7 +355,7 @@ export function PaymentStep({ draft, update, onNext }) {
   );
 }
 
-export function AccountStep({ auth, submitting, onSubmit }) {
+export function AccountStep({ auth, submitting, onSubmit, property = false, progress = "" }) {
   const [tab, setTab] = useState("signup");
   const email = auth.user?.profile?.email;
 
@@ -296,16 +363,18 @@ export function AccountStep({ auth, submitting, onSubmit }) {
     return (
       <>
         <p className="st-signed">
-          Signed in as <b>{email || "your account"}</b>. Your model goes on your shelf.
+          Signed in as <b>{email || "your account"}</b>.{" "}
+          {property ? "Your property is saved to your account as you trace." : "Your model goes on your shelf."}
         </p>
-        <Footer hint="Generation usually takes a few minutes.">
+        <Footer hint={property ? progress || "Opens in Studio, ready to trace." : "Generation usually takes a few minutes."}>
           <button type="button" className="st-primary" onClick={onSubmit} disabled={submitting}>
-            {submitting ? "Starting…" : "Generate my model"}
+            {submitting ? (property ? "Creating…" : "Starting…") : property ? "Create property" : "Generate my model"}
           </button>
         </Footer>
       </>
     );
   }
+  const action = property ? "start" : "generate";
 
   return (
     <>
@@ -319,12 +388,12 @@ export function AccountStep({ auth, submitting, onSubmit }) {
       </div>
       <ul className="st-trust">
         <li><b>Just your email</b>No profile, no marketing.</li>
-        <li><b>Private shelf</b>Only you see your models.</li>
-        <li><b>Come back anytime</b>Reopen and stage them later.</li>
+        <li><b>Private shelf</b>Only you see your {property ? "properties" : "models"}.</li>
+        <li><b>Come back anytime</b>{property ? "Pick up where you left off." : "Reopen and stage them later."}</li>
       </ul>
-      <Footer hint="Your draft is kept. Generation starts as soon as you're in.">
+      <Footer hint={property ? "Your property's name is kept; add the plan again after signing in." : "Your draft is kept. Generation starts as soon as you're in."}>
         <button type="button" className="st-primary" onClick={onSubmit} disabled={submitting}>
-          {submitting ? "Opening sign-in…" : tab === "signup" ? "Create account & generate" : "Sign in & generate"}
+          {submitting ? "Opening sign-in…" : tab === "signup" ? `Create account & ${action}` : `Sign in & ${action}`}
         </button>
       </Footer>
     </>

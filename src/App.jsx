@@ -1,15 +1,17 @@
-import { Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { apiRequest } from "./api";
+import PropertyStudio from "./PropertyStudio";
 import Studio, { StudioStatus } from "./Studio";
 import Landing from "./landing/Landing";
 import Stage from "./stage/Stage";
-import StudioViewer from "./studio/StudioViewer";
-import { createSampleProperty } from "./studio/property/propertyDocument";
-import { createEmptyProperty } from "./studio/property/propertyEdits";
 import { CREATE_JOB_URL, DRAFT_STORAGE_KEY, jobTitle } from "./stage/model";
 import useTheme from "./useTheme";
 import "./studio/studio.css";
+
+// Development-only sample scenes; loaded on demand so the 3D engine stays out of the
+// landing page's bundle.
+const DemoStudio = lazy(() => import("./studio/DemoStudio"));
 
 function App() {
   const auth = useAuth();
@@ -58,7 +60,16 @@ function App() {
       });
   }, [auth.isAuthenticated, auth.user?.access_token]);
 
+  function openProperty({ id }) {
+    window.history.pushState({}, "", `/studio?${new URLSearchParams({ property: id })}`);
+    setPathname("/studio");
+  }
+
   function openModel(job) {
+    if (job.inputMode === "property") {
+      openProperty({ id: job.jobId });
+      return;
+    }
     const params = new URLSearchParams({ job: job.jobId, prompt: jobTitle(job) });
     // Uploaded models open at their real size; generated ones use Studio's default.
     if (job.sizeMeters) params.set("size", String(job.sizeMeters));
@@ -92,10 +103,19 @@ function App() {
   const demo = import.meta.env.DEV && pathname === "/studio" ? new URLSearchParams(window.location.search).get("demo") : null;
   if (demo === "property" || demo === "blank") {
     return (
-      <StudioViewer
-        jobId={`demo-${demo}`}
-        prompt={demo === "blank" ? "New property" : "Sample house (10 marla, 2 storeys)"}
-        property={demo === "blank" ? createEmptyProperty() : createSampleProperty()}
+      <Suspense fallback={<StudioStatus onBack={leaveStudio} message="Preparing Studio…" />}>
+        <DemoStudio demo={demo} theme={theme} onToggleTheme={toggleTheme} onBack={leaveStudio} />
+      </Suspense>
+    );
+  }
+
+  if (pathname === "/studio" && new URLSearchParams(window.location.search).get("property")) {
+    const propertyId = new URLSearchParams(window.location.search).get("property");
+    return (
+      <PropertyStudio
+        key={propertyId}
+        accessToken={auth.user?.access_token}
+        propertyId={propertyId}
         theme={theme}
         onToggleTheme={toggleTheme}
         onBack={leaveStudio}
@@ -156,6 +176,7 @@ function App() {
           setStep("shelf");
         }}
         onOpenModel={openModel}
+        onOpenProperty={openProperty}
       />
     </>
   );

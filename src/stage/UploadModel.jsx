@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { apiRequest } from "../api";
-import inspectModel, { HEAVY_TRIANGLE_COUNT } from "./inspectModel";
+import { apiRequest, postToS3 } from "../api";
+// The model check needs three.js, so it loads only when a file is picked.
+const HEAVY_TRIANGLE_COUNT = 1_000_000;
 import { MAX_NAME_LENGTH, MODEL_CATEGORIES, MODEL_UPLOAD_URL } from "./model";
 
 function readableName(fileName) {
@@ -10,27 +11,6 @@ function readableName(fileName) {
 
 function megabytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
-}
-
-// Sends the file straight to S3 with the presigned POST; XHR for upload progress.
-function postToS3(upload, file, onProgress) {
-  return new Promise((resolve, reject) => {
-    const form = new FormData();
-    Object.entries(upload.fields).forEach(([name, value]) => form.append(name, value));
-    form.append("file", file); // must be the last field
-    const request = new XMLHttpRequest();
-    request.open("POST", upload.url);
-    request.upload.onprogress = (event) => {
-      if (event.lengthComputable) onProgress(event.loaded / event.total);
-    };
-    request.onload = () => (request.status >= 200 && request.status < 300
-      ? resolve()
-      : reject(new Error(request.status === 400
-        ? "The storage service refused this file (it may be too large)."
-        : `Upload failed (${request.status}).`)));
-    request.onerror = () => reject(new Error("Upload failed. Check your connection and try again."));
-    request.send(form);
-  });
 }
 
 /**
@@ -62,6 +42,7 @@ export default function UploadModel({ auth, onClose, onUploaded }) {
     setDetails(null);
     setChecking(true);
     try {
+      const { default: inspectModel } = await import("./inspectModel");
       const result = await inspectModel(picked);
       setFile(picked);
       setDetails(result);

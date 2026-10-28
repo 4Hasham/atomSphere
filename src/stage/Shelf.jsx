@@ -27,6 +27,7 @@ function ShelfItem({ job, onOpen }) {
           <span className="st-badge is-dark">{job.inputMode === "upload" ? "Uploading" : "Making"}</span>
         )}
         {group === "ready" && job.inputMode === "upload" && <span className="st-badge is-light">Uploaded</span>}
+        {group === "ready" && job.inputMode === "property" && <span className="st-badge is-light">Property</span>}
       </span>
       <span className="st-item-text" title={job.description || undefined}>
         <b>{jobTitle(job)}</b>

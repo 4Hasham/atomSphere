@@ -5,7 +5,9 @@ const HISTORY_LIMIT = 100;
 
 // One store per open Studio scene. Every edit replaces `document` with a new object
 // and pushes the old one onto `past`, which is all undo/redo needs.
-export function createSceneStore(initialDocument) {
+// `initial` can preset the editor, floorplan images and `persistence` (a saved
+// property's save / uploadPlanImage functions; null for unsaved scenes).
+export function createSceneStore(initialDocument, initial = {}) {
   return createStore((set, get) => {
     function edit(change) {
       const { document, past } = get();
@@ -27,11 +29,20 @@ export function createSceneStore(initialDocument) {
 
       // Floorplan editor state (not part of the document): 3D or plan, the floor being
       // edited, the active tool, what's selected and the display unit.
-      editor: { mode: "3d", levelIndex: 0, tool: "select", selection: null, unit: "ft", wallThickness: "exterior" },
+      editor: {
+        mode: "3d",
+        levelIndex: 0,
+        tool: "select",
+        selection: null,
+        unit: "ft",
+        wallThickness: "exterior",
+        ...initial.editor,
+      },
       setEditor: (patch) => set((state) => ({ editor: { ...state.editor, ...patch } })),
       // Floorplan images per level id (object URLs). Kept out of the document until
       // properties are saved with their images.
-      underlayImages: {},
+      underlayImages: initial.underlayImages ?? {},
+      persistence: initial.persistence ?? null,
       setUnderlayImage: (levelId, url) => set((state) => {
         const previous = state.underlayImages[levelId];
         if (previous && previous !== url) URL.revokeObjectURL(previous);

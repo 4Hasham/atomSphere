@@ -10,6 +10,7 @@ import { DroppedModel, LoadedModel } from "./objects/SceneModel";
 import ViewerErrorBoundary from "./objects/ViewerErrorBoundary";
 import EditorPanel from "./property/editor/EditorPanel";
 import PlanEditor from "./property/editor/PlanEditor";
+import PropertyAutosave from "./property/PropertyAutosave";
 import PropertyCamera from "./property/PropertyCamera";
 import PropertyModel from "./property/PropertyModel";
 import { propertySize } from "./property/propertyDocument";
@@ -38,14 +39,21 @@ export default function StudioViewer({
   prompt,
   sizeMeters,
   property = null,
+  initialScene = null,
+  initialUnderlayImages,
+  initialEditor,
+  persistence = null,
   theme = "dark",
   onToggleTheme,
   onBack,
 }) {
-  const [store] = useState(() => createSceneStore(createSceneDocument({
-    objects: url ? [createJobObject(jobId, prompt, sizeMeters)] : [],
-    property,
-  })));
+  const [store] = useState(() => createSceneStore(
+    initialScene ?? createSceneDocument({
+      objects: url ? [createJobObject(jobId, prompt, sizeMeters)] : [],
+      property,
+    }),
+    { underlayImages: initialUnderlayImages, editor: initialEditor, persistence },
+  ));
   // Signed URLs expire, so they live beside the document rather than in it.
   const modelUrls = { [jobId]: url };
 
@@ -85,6 +93,7 @@ export default function StudioViewer({
               <span className="viewer-id">ID · {jobId}</span>
             </div>
             <div className="viewer-tools">
+              {persistence && <PropertyAutosave save={persistence.save} />}
               <span className="studio-wordmark">atomSphere Studio</span>
               <ThemeToggle theme={theme} onToggle={onToggleTheme} className="studio-icon" size={16} />
             </div>

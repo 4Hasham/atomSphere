@@ -16,6 +16,7 @@ import {
   updateWall,
   wallLength,
 } from "../propertyEdits";
+import preparePlanImage, { checkPlanFile, initialUnderlay, isPdf } from "../planImage";
 import { formatArea, formatLength, parseLength } from "../units";
 import { findTool } from "./editorTools";
 
@@ -24,8 +25,6 @@ const WALL_THICKNESSES = [
   { value: INTERIOR_WALL, label: '4.5" brick (partition)' },
   { value: 0.345, label: '13.5" brick' },
 ];
-// A new floorplan is assumed to be about this wide until its scale is set.
-const DEFAULT_PLAN_WIDTH = 15;
 
 /** A length field that accepts feet/inches or metres and commits on Enter or blur. */
 function LengthInput({ id, value, unit, onCommit }) {
@@ -126,33 +125,39 @@ function LevelsSection({ property, levelIndex, onPick, editProperty }) {
   );
 }
 
-function UnderlaySection({ level, levelIndex, editProperty, editor, setEditor, underlayUrl, setUnderlayImage }) {
+function UnderlaySection({ level, levelIndex, editProperty, editor, setEditor, underlayUrl, setUnderlayImage, persistence }) {
   const [scaleText, setScaleText] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
+  // A PDF picked in this session, so another page can be chosen without re-picking.
+  const [pdf, setPdf] = useState(null);
   const scalePoints = editor.tool === "scale" ? editor.scalePoints : null;
 
-  function pickImage(file) {
+  async function pickImage(file, page = 1) {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Use a JPG or PNG image of the floorplan. (PDF support is coming.)");
+    const problem = checkPlanFile(file);
+    if (problem) {
+      setError(problem);
       return;
     }
     setError("");
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      setUnderlayImage(level.id, url);
-      editProperty((p) => setUnderlay(p, levelIndex, {
-        width: image.naturalWidth,
-        height: image.naturalHeight,
-        metresPerPixel: DEFAULT_PLAN_WIDTH / image.naturalWidth,
-        origin: [0, 0],
-        opacity: 0.55,
-      }));
+    try {
+      setBusy(isPdf(file) ? "Reading the PDF…" : "Reading the floorplan…");
+      const plan = await preparePlanImage(file, page);
+      let imageKey;
+      if (persistence) {
+        setBusy("Uploading the floorplan…");
+        imageKey = await persistence.uploadPlanImage(level.id, plan.blob);
+      }
+      setUnderlayImage(level.id, URL.createObjectURL(plan.blob));
+      editProperty((p) => setUnderlay(p, levelIndex, initialUnderlay(plan, imageKey)));
+      setPdf(isPdf(file) ? { file, page, pageCount: plan.pageCount } : null);
       setEditor({ tool: "scale", scalePoints: null });
-    };
-    image.onerror = () => setError("This image couldn't be opened.");
-    image.src = url;
+    } catch (pickError) {
+      setError(pickError.message || "This floorplan couldn't be used.");
+    } finally {
+      setBusy("");
+    }
   }
 
   function applyScale() {
@@ -171,6 +176,7 @@ function UnderlaySection({ level, levelIndex, editProperty, editor, setEditor, u
       ...underlay,
       metresPerPixel: underlay.metresPerPixel * factor,
       origin: [a[0] - (a[0] - underlay.origin[0]) * factor, a[1] - (a[1] - underlay.origin[1]) * factor],
+      calibrated: true,
     }));
     setScaleText("");
     setEditor({ tool: "wall", scalePoints: null });
@@ -180,19 +186,43 @@ function UnderlaySection({ level, levelIndex, editProperty, editor, setEditor, u
     <section className="terrain-section" aria-labelledby="pe-underlay-title">
       <h3 id="pe-underlay-title">Floorplan image</h3>
       {error && <p className="terrain-error" role="alert">{error}</p>}
+      {busy && <p className="terrain-description" role="status">{busy}</p>}
       {!level.underlay || !underlayUrl ? (
         <>
           <p className="terrain-description">
-            Upload this floor&apos;s plan to trace over it.
-            {level.underlay && " (Images aren't saved yet: upload it again after reloading.)"}
+            Upload this floor&apos;s plan (PDF, JPG or PNG) to trace over it.
+            {level.underlay && !persistence && " This scene isn't saved, so add the plan again after reloading."}
           </p>
-          <label className="terrain-submit pe-upload">
+          <label className={`terrain-submit pe-upload ${busy ? "is-busy" : ""}`}>
             Upload floorplan
-            <input type="file" accept="image/*" className="sr-only" onChange={(event) => pickImage(event.target.files?.[0])} />
+            <input
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,image/webp"
+              className="sr-only"
+              disabled={Boolean(busy)}
+              onChange={(event) => {
+                pickImage(event.target.files?.[0]);
+                event.target.value = "";
+              }}
+            />
           </label>
         </>
       ) : (
         <>
+          {pdf && pdf.pageCount > 1 && (
+            <Field id="pe-pdf-page" label="PDF page">
+              <select
+                id="pe-pdf-page"
+                value={pdf.page}
+                disabled={Boolean(busy)}
+                onChange={(event) => pickImage(pdf.file, Number(event.target.value))}
+              >
+                {Array.from({ length: pdf.pageCount }, (_, index) => (
+                  <option key={index} value={index + 1}>Page {index + 1} of {pdf.pageCount}</option>
+                ))}
+              </select>
+            </Field>
+          )}
           {scalePoints ? (
             <Field id="pe-scale-length" label="Real distance between the two points">
               <input
@@ -389,6 +419,7 @@ export default function EditorPanel() {
   const editProperty = useScene((state) => state.editProperty);
   const underlayImages = useScene((state) => state.underlayImages);
   const setUnderlayImage = useScene((state) => state.setUnderlayImage);
+  const persistence = useScene((state) => state.persistence);
   const canUndo = useScene((state) => state.past.length > 0);
   const canRedo = useScene((state) => state.future.length > 0);
   const undo = useScene((state) => state.undo);
@@ -450,6 +481,7 @@ export default function EditorPanel() {
         setEditor={setEditor}
         underlayUrl={underlayImages[level.id]}
         setUnderlayImage={setUnderlayImage}
+        persistence={persistence}
       />
     </aside>
   );

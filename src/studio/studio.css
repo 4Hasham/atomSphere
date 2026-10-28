@@ -443,6 +443,34 @@
   font-size: 0.54rem !important;
 }
 
+/* Autosave state in the Studio header. */
+.studio-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-faint);
+  font-size: 0.62rem;
+  white-space: nowrap;
+}
+
+.studio-save.is-error {
+  color: var(--danger);
+}
+
+.studio-save-retry {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.pe-upload.is-busy {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 /* ---------- Property: 3D / Plan switch and floorplan editor ---------- */
 
 .viewer-mode {

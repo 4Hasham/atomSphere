@@ -5,6 +5,8 @@ export const JOBS_API_URL = `${API_URL}/requests`;
 export const CREATE_JOB_URL = `${API_URL}/meteoclone-add-request`;
 export const MODEL_UPLOAD_URL = `${API_URL}/model-upload`;
 export const DRAFT_STORAGE_KEY = "atomsphere_pending_draft";
+// A property's name kept through the Cognito redirect (the plan file can't be).
+export const PROPERTY_DRAFT_KEY = "atomsphere_pending_property";
 
 // Photos are shrunk in the browser (see prepareImage.js), so people can pick phone
 // originals; what is uploaded must still fit the create-job request.
@@ -24,10 +26,13 @@ export const STEPS = [
   { id: "shelf", label: "Shelf" },
 ];
 
+// Floorplan first: an explorable 3D house is atomSphere's main product; the other three
+// make objects (furniture, props) with Hunyuan3D / Meshy.
 export const INPUT_MODES = [
+  { id: "floorplan", label: "Floorplan", hint: "Image or PDF · a 3D house" },
   { id: "prompt", label: "Describe it", hint: "A sentence or two" },
   { id: "single", label: "1 photo", hint: "Quickest from an image" },
-  { id: "multiview", label: "3 photos", hint: "Front, left, back · most accurate" },
+  { id: "multiview", label: "3 photos", hint: "Front, left, back" },
 ];
 
 export const MODEL_CATEGORIES = [
@@ -199,6 +204,10 @@ export async function buildRequestBody(draft) {
 
 export function inputSummary(draft) {
   const name = draft.name.trim();
+  if (draft.mode === "floorplan") {
+    const label = name.length > 40 ? `${name.slice(0, 40)}…` : name;
+    return [label, draft.planFile ? "floorplan" : "no plan yet"].filter(Boolean).join(" · ");
+  }
   const text = name || (draft.mode === "prompt" ? draft.prompt.trim() : "");
   const source = draft.mode === "single" ? "1 photo" : draft.mode === "multiview" ? "3 photos" : "";
   const label = text.length > 40 ? `${text.slice(0, 40)}…` : text;
@@ -214,6 +223,14 @@ export function inputState(draft) {
 }
 
 function contentState(draft) {
+  if (draft.mode === "floorplan") {
+    return {
+      ok: true,
+      hint: draft.planFile
+        ? "You'll set the plan's scale, then trace walls, doors and rooms over it."
+        : "Add the plan now, or start from a blank page and add it later.",
+    };
+  }
   if (draft.mode === "prompt") {
     if (!draft.prompt.trim()) return { ok: false, hint: "Write a sentence or two to continue." };
     return { ok: true, hint: "Shape, material, style. A sentence is plenty." };
@@ -230,7 +247,8 @@ function contentState(draft) {
 }
 
 export const EMPTY_DRAFT = {
-  mode: "prompt",
+  mode: "floorplan",
+  planFile: null,
   prompt: "",
   name: "",
   description: "",

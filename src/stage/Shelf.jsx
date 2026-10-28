@@ -75,7 +75,7 @@ function ObjectItem({ job, onOpen }) {
 
 /**
  * The signed-in user's properties, then their objects: the furniture, cars and other
- * models they place in properties (made there, or here on their own).
+ * models they place in properties (made there or here, or uploaded).
  */
 export default function Shelf({ jobs, loading, error, onReload, onOpen, onUpload, onNewProperty, onMakeObject }) {
   const [filter, setFilter] = useState("all");
@@ -139,13 +139,18 @@ export default function Shelf({ jobs, loading, error, onReload, onOpen, onUpload
             <h2 id="st-objects-title" className="st-shelf-title">
               Objects <span>{objects.length}</span>
             </h2>
-            <button type="button" className="st-secondary st-upload-open" onClick={onUpload}>
-              <UploadIcon /> Upload model
-            </button>
+            <div className="st-shelf-actions">
+              <button type="button" className="st-secondary st-upload-open" onClick={onMakeObject}>
+                <PlusIcon size={16} /> Make an object
+              </button>
+              <button type="button" className="st-secondary st-upload-open" onClick={onUpload}>
+                <UploadIcon /> Upload model
+              </button>
+            </div>
           </div>
           <p className="st-hint">
-            Furniture, cars, plants: to furnish a property, open it and choose Add an object.{" "}
-            <button type="button" className="st-link" onClick={onMakeObject}>Make an object on its own</button>
+            Furniture, cars, plants: made from a sentence or photos, or uploaded. To put one in a
+            property, open the property and choose Add an object.
           </p>
           {objects.length > 0 && (
             <>

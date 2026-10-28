@@ -29,7 +29,7 @@ export const STEPS = [
 
 // Floorplan first: an explorable 3D house is atomSphere's main product. The other three
 // make objects (furniture, props) with Hunyuan3D / Meshy, mostly from inside a property;
-// on their own they're reached from the shelf (or /create?mode=prompt).
+// on their own they're made from the shelf's Make an object (or /create?mode=prompt).
 export const INPUT_MODES = [
   { id: "floorplan", label: "Floorplan", hint: "Image or PDF · a 3D house" },
   { id: "prompt", label: "Describe it", hint: "A sentence or two" },

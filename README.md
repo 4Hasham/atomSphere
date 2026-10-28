@@ -5,7 +5,7 @@
 The home screen is a single stage with the steps shown in the header. It makes a
 **property** (an explorable 3D house) from a name and a floorplan. Objects (furniture,
 cars, a water tank) are made inside a property's Studio and placed in it; making one on
-its own is still possible from the Shelf's "Make an object on its own" link (or
+its own is still possible from the Shelf's **Make an object** button (or
 `/create?mode=prompt`), with Hunyuan3D (Standard) or Meshy (Polished).
 
 - **Floorplan:** a name and an optional plan (PDF, JPG or PNG; PDFs are drawn with

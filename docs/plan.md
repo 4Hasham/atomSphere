@@ -6,7 +6,7 @@
 * **Core value proposition:** Turn a real property's floorplan and photos into an **accurate, explorable 3D house** (floors, rooms, walls, doors, windows) that can be staged on real terrain, under real light and weather, and shared as a link or in AR.
 * **Everything revolves around properties.** One product with two engines, both feeding the same Studio, Shelf, accounts, AR, backdrops, terrain and weather:
   1. **Property mode (the product):** floorplan + photos → a structured, accurate house with rooms you can walk through. This is what real-estate customers pay for.
-  2. **Object generation (furnishing the property):** a sentence or 1–3 photos → a 3D object via Hunyuan3D or Meshy, made from inside a property and placed in it (sofas, beds, cars in the drive, water tanks on the roof). Approximate by nature. Making an object on its own still works but is kept out of sight (a small link on the Shelf, or `/create?mode=prompt`).
+  2. **Object generation (furnishing the property):** a sentence or 1–3 photos → a 3D object via Hunyuan3D or Meshy, made from inside a property and placed in it (sofas, beds, cars in the drive, water tanks on the roof). Approximate by nature. Objects can also be made on their own from the Shelf's *Make an object* button (or `/create?mode=prompt`); they never appear as a separate product on the landing page or the Stage.
 * **Why floorplans don't go through Hunyuan/Meshy:** image-to-3D models return one closed shell with guessed dimensions, no interior and wavy walls on buildings. It can't be lined up with an accurate plan. Instead:
   1. The plan becomes a **property document** (traced in the editor today; AI-read later, #54).
   2. The **Studio generates the 3D building** from that document.

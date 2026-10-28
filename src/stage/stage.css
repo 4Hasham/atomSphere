@@ -881,6 +881,12 @@
   border-top: 1px solid var(--line-1);
 }
 
+.st-shelf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .st-shelf-title {
   margin: 0;
   font-size: 16px;

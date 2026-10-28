@@ -6,6 +6,7 @@ import Landing from "./landing/Landing";
 import Stage from "./stage/Stage";
 import StudioViewer from "./studio/StudioViewer";
 import { createSampleProperty } from "./studio/property/propertyDocument";
+import { createEmptyProperty } from "./studio/property/propertyEdits";
 import { CREATE_JOB_URL, DRAFT_STORAGE_KEY, jobTitle } from "./stage/model";
 import useTheme from "./useTheme";
 import "./studio/studio.css";
@@ -86,14 +87,15 @@ function App() {
     );
   }
 
-  // Development only, until the floorplan editor exists: /studio?demo=property opens a
-  // sample two-storey house in property mode.
-  if (import.meta.env.DEV && pathname === "/studio" && new URLSearchParams(window.location.search).get("demo") === "property") {
+  // Development only, until the Floorplan input exists: /studio?demo=property opens a
+  // sample two-storey house, /studio?demo=blank an empty property to trace.
+  const demo = import.meta.env.DEV && pathname === "/studio" ? new URLSearchParams(window.location.search).get("demo") : null;
+  if (demo === "property" || demo === "blank") {
     return (
       <StudioViewer
-        jobId="demo-property"
-        prompt="Sample house (10 marla, 2 storeys)"
-        property={createSampleProperty()}
+        jobId={`demo-${demo}`}
+        prompt={demo === "blank" ? "New property" : "Sample house (10 marla, 2 storeys)"}
+        property={demo === "blank" ? createEmptyProperty() : createSampleProperty()}
         theme={theme}
         onToggleTheme={toggleTheme}
         onBack={leaveStudio}

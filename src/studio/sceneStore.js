@@ -25,6 +25,23 @@ export function createSceneStore(initialDocument) {
       propertyView: { level: "all", roof: true },
       setPropertyView: (patch) => set((state) => ({ propertyView: { ...state.propertyView, ...patch } })),
 
+      // Floorplan editor state (not part of the document): 3D or plan, the floor being
+      // edited, the active tool, what's selected and the display unit.
+      editor: { mode: "3d", levelIndex: 0, tool: "select", selection: null, unit: "ft", wallThickness: "exterior" },
+      setEditor: (patch) => set((state) => ({ editor: { ...state.editor, ...patch } })),
+      // Floorplan images per level id (object URLs). Kept out of the document until
+      // properties are saved with their images.
+      underlayImages: {},
+      setUnderlayImage: (levelId, url) => set((state) => {
+        const previous = state.underlayImages[levelId];
+        if (previous && previous !== url) URL.revokeObjectURL(previous);
+        return { underlayImages: { ...state.underlayImages, [levelId]: url } };
+      }),
+
+      // Every property edit is one undo step. `change` gets the property and returns a
+      // new one (see property/propertyEdits.js).
+      editProperty: (change) => edit((document) => ({ property: change(document.property) })),
+
       // A real-world terrain and an image backdrop both supply the ground around the
       // model, so they must never be active together. Setting a site clears the
       // backdrop; choosing a backdrop clears the site.

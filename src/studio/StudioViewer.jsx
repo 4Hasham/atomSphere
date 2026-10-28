@@ -8,6 +8,8 @@ import { findBackdrop, groundFor, STUDIO_SURFACES } from "./backdrops/backdrops"
 import SunLight from "./lighting/SunLight";
 import { DroppedModel, LoadedModel } from "./objects/SceneModel";
 import ViewerErrorBoundary from "./objects/ViewerErrorBoundary";
+import EditorPanel from "./property/editor/EditorPanel";
+import PlanEditor from "./property/editor/PlanEditor";
 import PropertyCamera from "./property/PropertyCamera";
 import PropertyModel from "./property/PropertyModel";
 import { propertySize } from "./property/propertyDocument";
@@ -49,7 +51,8 @@ export default function StudioViewer({
 
   useEffect(() => {
     function handleKeyDown(event) {
-      if (event.key === "Escape") {
+      // In the floorplan editor, Esc cancels drawing instead of leaving Studio.
+      if (event.key === "Escape" && store.getState().editor.mode !== "plan") {
         onBack();
         return;
       }
@@ -101,6 +104,8 @@ function StudioWorkspace({ modelUrls, theme }) {
   const objects = useScene((state) => state.document.objects);
   const property = useScene((state) => state.document.property);
   const propertyView = useScene((state) => state.propertyView);
+  const editorMode = useScene((state) => state.editor.mode);
+  const setEditor = useScene((state) => state.setEditor);
   const terrainStatus = useTerrain(site);
   const terrain = terrainStatus.terrain;
   const scenePreset = SCENE_PRESETS.find((preset) => preset.id === presetId) ?? SCENE_PRESETS[0];
@@ -119,6 +124,37 @@ function StudioWorkspace({ modelUrls, theme }) {
 
   // A new key per site rebuilds the terrain collider and re-drops the models.
   const siteKey = site ? `${site.latitude},${site.longitude}` : "no-site";
+
+  const modeSwitch = property && (
+    <div className="viewer-mode" role="tablist" aria-label="View">
+      {[["3d", "3D"], ["plan", "Plan"]].map(([mode, text]) => (
+        <button
+          key={mode}
+          type="button"
+          role="tab"
+          aria-selected={editorMode === mode}
+          className={editorMode === mode ? "is-on" : ""}
+          onClick={() => setEditor({ mode, selection: null })}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (property && editorMode === "plan") {
+    return (
+      <div className="viewer-workspace">
+        <div className="viewer-stage">
+          <div className="viewer-canvas is-plan">
+            <PlanEditor />
+          </div>
+          {modeSwitch}
+        </div>
+        <EditorPanel />
+      </div>
+    );
+  }
 
   return (
     <div className="viewer-workspace">
@@ -256,6 +292,7 @@ function StudioWorkspace({ modelUrls, theme }) {
             />
           </Canvas>
         </div>
+        {modeSwitch}
         <p className="viewer-hint">{ORBIT_HINT}</p>
       </div>
       <SceneControls terrainStatus={terrainStatus} />

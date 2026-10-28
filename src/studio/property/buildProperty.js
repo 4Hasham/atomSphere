@@ -98,6 +98,35 @@ function wallBounds(walls) {
   return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 }
 
+/** The rectangle around two rectangles (from wallBounds or an outline's bounds). */
+function coveringBounds(a, b) {
+  const points = [...a, ...b];
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+}
+
+/**
+ * Each level's floor slab. An upper floor's slab is also the ceiling of the floor below,
+ * so it covers that floor too: where the upper floor is smaller, the rest is an open
+ * terrace rather than a room open to the sky. An empty upper floor still has its slab,
+ * which is the flat roof of the floor below. A level's own `outline` wins.
+ */
+export function slabOutlines(property) {
+  const outlines = [];
+  property.levels.forEach((level, index) => {
+    if (level.outline) {
+      outlines.push(level.outline);
+      return;
+    }
+    const own = level.walls.length ? wallBounds(level.walls) : null;
+    const below = index > 0 ? outlines[index - 1] : null;
+    outlines.push(own && below ? coveringBounds(own, below) : own ?? below);
+  });
+  return outlines;
+}
+
 function merged(geometries) {
   if (!geometries.length) return null;
   const result = mergeGeometries(geometries.map((geometry) => geometry.index ? geometry.toNonIndexed() : geometry));
@@ -111,6 +140,7 @@ function merged(geometries) {
  */
 export default function buildProperty(property) {
   const elevations = levelElevations(property);
+  const outlines = slabOutlines(property);
   const bounds = new Box3();
 
   const levels = property.levels.map((level, index) => {
@@ -141,7 +171,7 @@ export default function buildProperty(property) {
       glassBoxes.push(...boxesToGeometry(glass, GLASS_THICKNESS, frame));
     });
 
-    const outline = level.outline ?? (level.walls.length ? wallBounds(level.walls) : null);
+    const outline = outlines[index];
     // The ground floor's slab is the plinth, down to the ground.
     const slabDepth = index === 0 ? elevation : level.slabThickness;
     const slab = outline && slabDepth > EPSILON

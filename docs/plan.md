@@ -90,7 +90,7 @@ Planned additions: share links (#17), credits and local payments (#48, #49), AR 
 ### Phase 4: Property Mode (Real Estate) — in progress (#20)
 **Done**
 * **Property document (#50):** `levels[]` (bottom to top, on a 0.3 m plinth) → `walls[]` (thickness, door/window openings) + `rooms[]` (polygon, name, type). Elevations follow from the level order. Pakistani defaults: 9" outer walls, 4.5" partitions, 3.2 m floors, flat roof.
-* **3D builder (#50):** pure function; walls built in pieces around each opening; corners and T-junctions joined; slabs, room floors, glass, roof. In Studio: whole house, dollhouse cut at any floor, roof toggle.
+* **3D builder (#50):** pure function; walls built in pieces around each opening; corners and T-junctions joined; slabs, room floors, glass, roof. An upper floor's slab also covers the floor below (it is that floor's ceiling), so a smaller upper floor leaves a terrace, never a room open to the sky; an empty upper floor is the flat roof of the one below. In Studio: whole house, dollhouse cut at any floor, roof toggle.
 * **Floorplan trace editor (#51):** Plan view next to 3D; floorplan image per floor with scale set from two points and a typed distance (feet/inches or metres); walls with snapping (corners, walls, straight lines, alignment); doors, windows, rooms, floors; select / edit / delete / drag corners; undo/redo.
 
 **Decisions made**

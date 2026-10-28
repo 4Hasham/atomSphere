@@ -6,7 +6,8 @@ const HISTORY_LIMIT = 100;
 // One store per open Studio scene. Every edit replaces `document` with a new object
 // and pushes the old one onto `past`, which is all undo/redo needs.
 // `initial` can preset the editor, floorplan images and `persistence` (a saved
-// property's save / uploadPlanImage functions; null for unsaved scenes).
+// property's save / uploadPlanImage functions; null for unsaved scenes), and `readOnly`
+// for a shared property's viewers (look around, change nothing that's kept).
 export function createSceneStore(initialDocument, initial = {}) {
   return createStore((set, get) => {
     function edit(change) {
@@ -20,6 +21,7 @@ export function createSceneStore(initialDocument, initial = {}) {
 
     return {
       document: initialDocument,
+      readOnly: Boolean(initial.readOnly),
       past: [],
       future: [],
       // How the property is shown (which level, roof on/off): a viewing choice, not an

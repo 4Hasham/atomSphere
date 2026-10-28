@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { useAuth } from "./auth/useAuth";
 import SignInPage from "./auth/SignInPage";
 import PropertyStudio from "./PropertyStudio";
+import SharedProperty from "./SharedProperty";
 import Studio, { StudioStatus } from "./Studio";
 import Landing from "./landing/Landing";
 import Stage from "./stage/Stage";
@@ -85,6 +86,21 @@ function App() {
         <p className="boot-text">Connecting to atomSphere…</p>
         <span className="boot-line" aria-hidden="true" />
       </main>
+    );
+  }
+
+  // A shared property: anyone with the link, signed in or not.
+  const sharedToken = pathname.match(/^\/p\/([A-Za-z0-9_-]+)$/)?.[1];
+  if (sharedToken) {
+    return (
+      <SharedProperty
+        key={sharedToken}
+        token={sharedToken}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onHome={() => navigate("/")}
+        onStart={() => navigate("/create")}
+      />
     );
   }
 

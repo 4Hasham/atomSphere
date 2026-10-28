@@ -11,6 +11,8 @@ export default function SceneControls({ terrainStatus }) {
   const backdrop = findBackdrop(useScene((state) => state.document.backdrop));
   const objects = useScene((state) => state.document.objects);
   const hasProperty = useScene((state) => Boolean(state.document.property));
+  // Viewers of a shared property look around: floors, light, background. Nothing else.
+  const readOnly = useScene((state) => state.readOnly);
   const presetId = useScene((state) => state.document.weather.presetId);
   const setBackdrop = useScene((state) => state.setBackdrop);
   const setWeatherPreset = useScene((state) => state.setWeatherPreset);
@@ -25,35 +27,37 @@ export default function SceneControls({ terrainStatus }) {
     <aside className="scene-controls" aria-label="Scene controls">
       <div className="scene-controls-heading">
         <div className="scene-controls-top">
-          <span className="terrain-label">SCENE CONTROLS</span>
-          <div className="scene-history" role="group" aria-label="History">
-            <button
-              className="studio-icon"
-              type="button"
-              onClick={undo}
-              disabled={!canUndo}
-              aria-label="Undo"
-              title="Undo (Ctrl+Z)"
-            >
-              <UndoIcon />
-            </button>
-            <button
-              className="studio-icon"
-              type="button"
-              onClick={redo}
-              disabled={!canRedo}
-              aria-label="Redo"
-              title="Redo (Ctrl+Shift+Z)"
-            >
-              <RedoIcon />
-            </button>
-          </div>
+          <span className="terrain-label">{readOnly ? "VIEW" : "SCENE CONTROLS"}</span>
+          {!readOnly && (
+            <div className="scene-history" role="group" aria-label="History">
+              <button
+                className="studio-icon"
+                type="button"
+                onClick={undo}
+                disabled={!canUndo}
+                aria-label="Undo"
+                title="Undo (Ctrl+Z)"
+              >
+                <UndoIcon />
+              </button>
+              <button
+                className="studio-icon"
+                type="button"
+                onClick={redo}
+                disabled={!canRedo}
+                aria-label="Redo"
+                title="Redo (Ctrl+Shift+Z)"
+              >
+                <RedoIcon />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* A property's own controls come first: how it's shown, and furnishing it. */}
       <PropertyViewControls />
-      <FurnishSection SizeControl={ModelSizeControl} />
+      {!readOnly && <FurnishSection SizeControl={ModelSizeControl} />}
 
       <section
         className={hasProperty ? "terrain-section" : "scene-controls-heading"}
@@ -98,27 +102,36 @@ export default function SceneControls({ terrainStatus }) {
         )}
       </div>
 
-      {objects.filter((object) => !object.placement).map((object) => (
+      {!readOnly && objects.filter((object) => !object.placement).map((object) => (
         <ModelSizeControl key={`${object.id}-${object.sizeMeters}`} object={object} />
       ))}
 
 
-      <section className="terrain-section" aria-labelledby="terrain-title">
-        <h3 id="terrain-title">Terrain backdrop</h3>
-        <p className="terrain-description">Set a location to add real-world terrain to your scene.</p>
-        {/* Remount on site changes (including undo/redo) so the inputs show the current site. */}
-        <TerrainForm
-          key={site ? `${site.latitude},${site.longitude}` : "no-site"}
-          site={site}
-          terrainStatus={terrainStatus}
-        />
-        {terrain && (
+      {readOnly ? (
+        terrain && (
           <p className="terrain-attribution">
             Terrain data © <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noreferrer">Mapbox</a>
             {" · "}© OpenStreetMap contributors
           </p>
-        )}
-      </section>
+        )
+      ) : (
+        <section className="terrain-section" aria-labelledby="terrain-title">
+          <h3 id="terrain-title">Terrain backdrop</h3>
+          <p className="terrain-description">Set a location to add real-world terrain to your scene.</p>
+          {/* Remount on site changes (including undo/redo) so the inputs show the current site. */}
+          <TerrainForm
+            key={site ? `${site.latitude},${site.longitude}` : "no-site"}
+            site={site}
+            terrainStatus={terrainStatus}
+          />
+          {terrain && (
+            <p className="terrain-attribution">
+              Terrain data © <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noreferrer">Mapbox</a>
+              {" · "}© OpenStreetMap contributors
+            </p>
+          )}
+        </section>
+      )}
     </aside>
   );
 }

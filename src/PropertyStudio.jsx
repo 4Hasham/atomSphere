@@ -2,9 +2,10 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import { apiRequest } from "./api";
 import { StudioStatus } from "./Studio";
 import { CREATE_JOB_URL, MODEL_URL_API_URL } from "./stage/model";
-import { loadProperty, saveProperty, uploadPlanImage } from "./stage/propertyApi";
+import { loadProperty, saveProperty, shareProperty, unshareProperty, uploadPlanImage } from "./stage/propertyApi";
 import useJobs from "./stage/useJobs";
 import { ObjectLibraryContext } from "./studio/objects/objectLibrary";
+import ShareButton from "./studio/property/ShareDialog";
 import { createEmptyProperty } from "./studio/property/propertyEdits";
 import { createSceneDocument } from "./studio/sceneDocument";
 
@@ -23,6 +24,7 @@ function openingEditor(property) {
 export default function PropertyStudio({ accessToken, propertyId, theme, onToggleTheme, onBack }) {
   const [loaded, setLoaded] = useState(null);
   const [error, setError] = useState("");
+  const [shareToken, setShareToken] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -43,6 +45,7 @@ export default function PropertyStudio({ accessToken, propertyId, theme, onToggl
           if (url) underlayImages[level.id] = url;
         });
         setLoaded({ title: result.title, scene, underlayImages, editor: openingEditor(scene.property) });
+        setShareToken(result.shareToken ?? null);
       })
       .catch((loadError) => {
         if (active) setError(loadError.message || "Couldn't open this property.");
@@ -76,6 +79,16 @@ export default function PropertyStudio({ accessToken, propertyId, theme, onToggl
     createObject: (body) => apiRequest(CREATE_JOB_URL, accessToken, { method: "POST", body: JSON.stringify(body) }),
   }), [jobs, jobsLoading, reload, accessToken]);
 
+  const sharing = {
+    token: shareToken,
+    title: loaded?.title ?? "",
+    share: async () => setShareToken(await shareProperty(accessToken, propertyId)),
+    unshare: async () => {
+      await unshareProperty(accessToken, propertyId);
+      setShareToken(null);
+    },
+  };
+
   if (error) return <StudioStatus onBack={onBack} message={error} isError />;
   if (!loaded) return <StudioStatus onBack={onBack} message="Opening your property…" />;
 
@@ -89,6 +102,7 @@ export default function PropertyStudio({ accessToken, propertyId, theme, onToggl
           initialUnderlayImages={loaded.underlayImages}
           initialEditor={loaded.editor}
           persistence={persistence}
+          headerActions={<ShareButton sharing={sharing} />}
           theme={theme}
           onToggleTheme={onToggleTheme}
           onBack={onBack}

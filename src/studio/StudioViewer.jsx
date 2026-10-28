@@ -43,6 +43,11 @@ export default function StudioViewer({
   initialUnderlayImages,
   initialEditor,
   persistence = null,
+  // A shared property's viewer: no editing, no plan, no furnishing.
+  viewOnly = false,
+  // Extra header controls (Share for a property's owner, a call to action for viewers).
+  headerActions = null,
+  backLabel = "Shelf",
   theme = "dark",
   onToggleTheme,
   onBack,
@@ -52,15 +57,16 @@ export default function StudioViewer({
       objects: url ? [createJobObject(jobId, prompt, sizeMeters)] : [],
       property,
     }),
-    { underlayImages: initialUnderlayImages, editor: initialEditor, persistence },
+    { underlayImages: initialUnderlayImages, editor: initialEditor, persistence, readOnly: viewOnly },
   ));
   // Signed URLs expire, so they live beside the document rather than in it.
   const modelUrls = { [jobId]: url };
 
   useEffect(() => {
     function handleKeyDown(event) {
-      // Keys in a dialog (adding an object) belong to it.
+      // Keys in a dialog (adding an object) belong to it; viewers have nothing to undo.
       if (event.target instanceof Element && event.target.closest("dialog")) return;
+      if (store.getState().readOnly) return;
       const { editor, staging, setStaging, removeObject } = store.getState();
       const inPlan = editor.mode === "plan";
       // Esc steps back: stop placing, then clear the selection, then leave Studio. In
@@ -98,14 +104,17 @@ export default function StudioViewer({
         <section className="model-viewer" aria-labelledby="viewer-title">
           <header className="viewer-header">
             <button className="studio-back" type="button" onClick={onBack}>
-              <span aria-hidden="true">←</span> Shelf
+              <span aria-hidden="true">←</span> {backLabel}
             </button>
             <div>
-              <span className="eyebrow"><span className="eyebrow-dot" /> STUDIO · EDIT YOUR SCENE</span>
+              <span className="eyebrow">
+                <span className="eyebrow-dot" /> {viewOnly ? "SHARED PROPERTY · VIEW IN 3D" : "STUDIO · EDIT YOUR SCENE"}
+              </span>
               <h2 id="viewer-title">{prompt || "Generated model"}</h2>
-              <span className="viewer-id">ID · {jobId}</span>
+              {!viewOnly && <span className="viewer-id">ID · {jobId}</span>}
             </div>
             <div className="viewer-tools">
+              {headerActions}
               {persistence && <PropertyAutosave save={persistence.save} />}
               <span className="studio-wordmark">atomSphere Studio</span>
               <ThemeToggle theme={theme} onToggle={onToggleTheme} className="studio-icon" size={16} />
@@ -131,6 +140,7 @@ function StudioWorkspace({ modelUrls, theme }) {
   const staging = useScene((state) => state.staging);
   const setStaging = useScene((state) => state.setStaging);
   const setPropertyView = useScene((state) => state.setPropertyView);
+  const readOnly = useScene((state) => state.readOnly);
   // Objects placed in a property render with it; any others stand at the centre.
   const looseObjects = objects.filter((object) => !object.placement);
   const terrainStatus = useTerrain(site);
@@ -150,7 +160,7 @@ function StudioWorkspace({ modelUrls, theme }) {
   // A new key per site rebuilds the terrain collider and re-drops the models.
   const siteKey = site ? `${site.latitude},${site.longitude}` : "no-site";
 
-  const modeSwitch = property && (
+  const modeSwitch = property && !readOnly && (
     <div className="viewer-mode" role="tablist" aria-label="View">
       {[["3d", "3D"], ["plan", "Plan"]].map(([mode, text]) => (
         <button

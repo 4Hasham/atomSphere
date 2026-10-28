@@ -1075,3 +1075,65 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ---------- Sharing a property ---------- */
+
+.studio-share {
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--panel-bg);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.studio-share.is-on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.share-link {
+  display: flex;
+  gap: 8px;
+}
+
+.share-link .st-input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  font-size: 14px;
+}
+
+.share-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.share-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .share-link {
+    flex-direction: column;
+  }
+}

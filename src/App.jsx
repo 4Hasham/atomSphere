@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { trackEvent, trackPageView } from "./analytics";
 import { useAuth } from "./auth/useAuth";
 import SignInPage from "./auth/SignInPage";
 import PropertyStudio from "./PropertyStudio";
@@ -33,17 +34,21 @@ function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  const title = pathname === "/studio"
+    ? "Studio — atomSphere"
+    : pathname === "/signin"
+      ? "Sign in — atomSphere"
+    : pathname === "/" && !auth.isAuthenticated
+      ? "atomSphere — See the house before you buy it."
+      : step === "shelf"
+      ? "Shelf — atomSphere"
+      : "atomSphere — See the house before you buy it.";
+
+  // A page view per new path or title (the shelf shares "/" with the Stage).
   useEffect(() => {
-    document.title = pathname === "/studio"
-      ? "Studio — atomSphere"
-      : pathname === "/signin"
-        ? "Sign in — atomSphere"
-      : pathname === "/" && !auth.isAuthenticated
-        ? "atomSphere — See the house before you buy it."
-        : step === "shelf"
-        ? "Shelf — atomSphere"
-        : "atomSphere — See the house before you buy it.";
-  }, [pathname, step, auth.isAuthenticated]);
+    document.title = title;
+    if (!auth.isLoading) trackPageView();
+  }, [title, pathname, auth.isLoading]);
 
   // /signin once signed in (a bookmark, another tab) shows the shelf's page instead.
   const signedInOnSignInPage = pathname === "/signin" && auth.isAuthenticated;
@@ -173,7 +178,10 @@ function App() {
       <Landing
         theme={theme}
         toggleTheme={toggleTheme}
-        onStart={() => navigate("/create")}
+        onStart={() => {
+          trackEvent("start_floorplan");
+          navigate("/create");
+        }}
         onSignIn={() => navigate("/signin")}
       />
     );

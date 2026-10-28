@@ -19,8 +19,50 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="A two-storey house made in atomSphere, beside the line: See the house before you buy it." />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="atomSphere — See the house before you buy it." />
+    <meta name="twitter:description" content="Upload a floorplan and get a 3D house you can explore floor by floor, with every room to scale, on its real location." />
+    <meta name="twitter:image" content="%VITE_SITE_URL%/og-image.jpg" />
+    <link rel="canonical" href="%VITE_SITE_URL%/" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "%VITE_SITE_URL%/#organization",
+            "name": "atomSphere",
+            "url": "%VITE_SITE_URL%/",
+            "logo": "%VITE_SITE_URL%/icon-512.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "%VITE_SITE_URL%/#website",
+            "name": "atomSphere",
+            "url": "%VITE_SITE_URL%/",
+            "publisher": { "@id": "%VITE_SITE_URL%/#organization" }
+          },
+          {
+            "@type": "WebApplication",
+            "name": "atomSphere",
+            "url": "%VITE_SITE_URL%/",
+            "description": "Upload a floorplan and get a 3D house you can explore floor by floor, with every room to scale, on its real location.",
+            "applicationCategory": "DesignApplication",
+            "operatingSystem": "Web browser",
+            "publisher": { "@id": "%VITE_SITE_URL%/#organization" }
+          }
+        ]
+      }
+    </script>
+    <!-- The landing page is prerendered into #root at build time (scripts/prerender.js);
+         a signed-in visitor gets the app instead, so it stays hidden for them. -->
+    <style>html[data-session] [data-prerendered] { display: none; }</style>
     <script>
       (() => {
+        try {
+          if (localStorage.getItem("atomsphere_session")) document.documentElement.dataset.session = "";
+        } catch {
+          /* no storage: treated as signed out */
+        }
         try {
           const stored = localStorage.getItem("atomsphere_theme");
           const theme = stored === "light" || stored === "dark"
@@ -43,7 +85,7 @@
     <title>atomSphere — See the house before you buy it.</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><!--app-html--></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

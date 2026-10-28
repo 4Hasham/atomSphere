@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { trackEvent } from "../analytics";
 import { useAuth } from "./useAuth";
 import { friendlyMessage, isEmailTaken, PASSWORD_RULES } from "./cognito";
 
@@ -98,6 +99,7 @@ export default function AuthForm({ initialMode = "signup", labels = {}, onDone }
         throw signUpError;
       }
       if (account.confirmed) {
+        trackEvent("sign_up", { method: "email" });
         onDone?.(await auth.signIn(email, password));
         return;
       }
@@ -118,6 +120,7 @@ export default function AuthForm({ initialMode = "signup", labels = {}, onDone }
         throw confirmError;
       }
       writePending(null);
+      trackEvent("sign_up", { method: "email" });
       if (password) {
         onDone?.(await auth.signIn(email, password));
       } else {

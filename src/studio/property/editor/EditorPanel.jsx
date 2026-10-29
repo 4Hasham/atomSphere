@@ -19,7 +19,7 @@ import {
   wallLength,
 } from "../propertyEdits";
 import preparePlanImage, { checkPlanFile, initialUnderlay, isPdf, planImageForReading } from "../planImage";
-import { draftFromReading } from "../planReading";
+import { draftFromDrawing, draftFromReading, readDrawing } from "../planReading";
 import { snapToDrawing } from "../wallSnapping";
 import { formatArea, formatLength, parseLength } from "../units";
 import { findTool } from "./editorTools";
@@ -161,9 +161,10 @@ function LevelsSection({ property, levelIndex, onPick, editProperty }) {
 }
 
 /**
- * AI floorplan reading: the plan image goes to the plan reader (readPlan.js), and what it
- * read becomes this floor's walls, doors, windows and rooms, over the plan, with the
- * scale from its printed measurements. One edit, so Undo puts the floor back.
+ * AI floorplan reading: the walls, doors, windows and rooms are found in the plan image
+ * itself, while the plan reader (readPlan.js) reads its room names and printed sizes,
+ * which name the rooms and set the scale. Together they become this floor's plan, over
+ * the drawing. One edit, so Undo puts the floor back.
  */
 function ReadPlan({ level, levelIndex, underlayUrl, editProperty, setEditor, readPlan }) {
   // idle | confirm (the floor already has work) | reading | done | error
@@ -174,28 +175,37 @@ function ReadPlan({ level, levelIndex, underlayUrl, editProperty, setEditor, rea
     setState({ status: "reading" });
     try {
       const image = await planImageForReading(underlayUrl);
-      const { gray, ...sent } = image;
-      const { reading, coordinates } = await readPlan(sent);
+      const { gray, pixels, ...sent } = image;
+      // The model reads while the drawing is searched (a second or so, here).
+      const reply = readPlan(sent).then((result) => result, (problem) => ({ problem }));
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      const drawing = readDrawing(pixels);
+      const { reading, coordinates, problem } = await reply;
       const { underlay } = level;
-      const draft = draftFromReading(reading, {
-        space: coordinates,
-        sentWidth: image.width,
-        sentHeight: image.height,
-        sentScale: image.scale,
-      }, {
-        knownMetresPerPixel: underlay.calibrated ? underlay.metresPerPixel : null,
-        guessMetresPerPixel: underlay.metresPerPixel,
-        origin: underlay.origin,
-      });
-      // The model places walls roughly; move each onto the wall drawn near it.
-      const snapped = snapToDrawing(draft, gray, { metresPerPixel: draft.metresPerPixel, origin: underlay.origin });
-      editProperty((p) => replaceLevelPlan(p, levelIndex, snapped, {
+      const sentImage = { space: coordinates, sentWidth: image.width, sentHeight: image.height, sentScale: image.scale };
+      const knownMetresPerPixel = underlay.calibrated ? underlay.metresPerPixel : null;
+      let draft;
+      if (drawing.walls.length) {
+        draft = draftFromDrawing(drawing, problem ? null : reading, sentImage, {
+          drawingScale: image.scale,
+          knownMetresPerPixel,
+          origin: underlay.origin,
+        });
+        if (problem) draft.warnings.unshift("The room names and sizes couldn't be read, so the rooms are unnamed.");
+      } else {
+        // Nothing recognisable as walls in the drawing (a sketch, say): the model's own.
+        if (problem) throw problem;
+        const read = draftFromReading(reading, sentImage, { knownMetresPerPixel, guessMetresPerPixel: underlay.metresPerPixel, origin: underlay.origin });
+        // The model places walls roughly; move each onto the wall drawn near it.
+        draft = { ...read, ...snapToDrawing(read, gray, { metresPerPixel: read.metresPerPixel, origin: underlay.origin }) };
+      }
+      editProperty((p) => replaceLevelPlan(p, levelIndex, draft, {
         ...underlay,
         metresPerPixel: draft.metresPerPixel,
         calibrated: draft.scaleSource !== "guess",
       }));
       setEditor({ tool: "select", selection: null, scalePoints: null });
-      setState({ status: "done", draft: { ...draft, ...snapped } });
+      setState({ status: "done", draft });
     } catch (readError) {
       setState({ status: "error", message: readError.message || "The plan couldn't be read. Please try again." });
     }
@@ -228,15 +238,15 @@ function ReadPlan({ level, levelIndex, underlayUrl, editProperty, setEditor, rea
       {state.status === "error" && <p className="terrain-error" role="alert">{state.message}</p>}
       {draft ? (
         <p className="terrain-description" role="status">
-          Read {draft.walls.length} walls, {openings} doors and windows and {draft.rooms.length} rooms
-          {draft.scaleSource === "measurements" ? ", with the scale from the plan's measurements" : ""},
-          and lined up {draft.moved} {draft.moved === 1 ? "wall" : "walls"} with the drawing.
+          Found {draft.walls.length} walls, {openings} doors and windows and {draft.rooms.length} rooms
+          {draft.scaleSource === "measurements" ? ", with the scale from the plan's printed sizes" : ""}
+          {draft.moved !== undefined ? ` (${draft.moved} ${draft.moved === 1 ? "wall" : "walls"} lined up with the drawing)` : ""}.
           Check them against the plan: select anything to fix or delete it.
         </p>
       ) : state.status !== "error" && (
         <p className="terrain-description">
-          AI draws the walls, doors, windows and rooms from the plan and finds its scale from the
-          printed measurements. You then check and correct them.
+          AI finds the walls, doors, windows and rooms on the plan, names the rooms and sets the
+          scale from their printed sizes. You then check and correct them.
         </p>
       )}
       {draft?.warnings.map((warning) => <p key={warning} className="terrain-error">{warning}</p>)}

@@ -95,7 +95,7 @@ const READING_LONG_EDGE = 2048;
  * the plan at its top-left. The model reads images as squares (a wide plan comes back
  * squashed otherwise), so sending one makes its coordinates exact. Returns { image
  * (base64 JPEG), contentType, width, height (the square's side), scale (square pixels
- * per plan-image pixel) }.
+ * per plan-image pixel), gray (the plan's brightness at that size, for wallSnapping) }.
  */
 export async function planImageForReading(url) {
   const response = await fetch(url);
@@ -110,10 +110,24 @@ export async function planImageForReading(url) {
   const context = canvas.getContext("2d");
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, side, side);
-  context.drawImage(bitmap, 0, 0, Math.round(bitmap.width * scale), Math.round(bitmap.height * scale));
+  const planWidth = Math.round(bitmap.width * scale);
+  const planHeight = Math.round(bitmap.height * scale);
+  context.drawImage(bitmap, 0, 0, planWidth, planHeight);
   bitmap.close();
+  const rgba = context.getImageData(0, 0, planWidth, planHeight).data;
+  const gray = new Uint8Array(planWidth * planHeight);
+  for (let index = 0; index < gray.length; index += 1) {
+    gray[index] = 0.299 * rgba[index * 4] + 0.587 * rgba[index * 4 + 1] + 0.114 * rgba[index * 4 + 2];
+  }
   const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-  return { image: dataUrl.slice(dataUrl.indexOf(",") + 1), contentType: "image/jpeg", width: side, height: side, scale };
+  return {
+    image: dataUrl.slice(dataUrl.indexOf(",") + 1),
+    contentType: "image/jpeg",
+    width: side,
+    height: side,
+    scale,
+    gray: { data: gray, width: planWidth, height: planHeight, scale },
+  };
 }
 
 export function initialUnderlay({ width, height }, imageKey) {

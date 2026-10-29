@@ -20,6 +20,7 @@ import {
 } from "../propertyEdits";
 import preparePlanImage, { checkPlanFile, initialUnderlay, isPdf, planImageForReading } from "../planImage";
 import { draftFromReading } from "../planReading";
+import { snapToDrawing } from "../wallSnapping";
 import { formatArea, formatLength, parseLength } from "../units";
 import { findTool } from "./editorTools";
 
@@ -173,7 +174,8 @@ function ReadPlan({ level, levelIndex, underlayUrl, editProperty, setEditor, rea
     setState({ status: "reading" });
     try {
       const image = await planImageForReading(underlayUrl);
-      const { reading, coordinates } = await readPlan(image);
+      const { gray, ...sent } = image;
+      const { reading, coordinates } = await readPlan(sent);
       const { underlay } = level;
       const draft = draftFromReading(reading, {
         space: coordinates,
@@ -185,13 +187,15 @@ function ReadPlan({ level, levelIndex, underlayUrl, editProperty, setEditor, rea
         guessMetresPerPixel: underlay.metresPerPixel,
         origin: underlay.origin,
       });
-      editProperty((p) => replaceLevelPlan(p, levelIndex, draft, {
+      // The model places walls roughly; move each onto the wall drawn near it.
+      const snapped = snapToDrawing(draft, gray, { metresPerPixel: draft.metresPerPixel, origin: underlay.origin });
+      editProperty((p) => replaceLevelPlan(p, levelIndex, snapped, {
         ...underlay,
         metresPerPixel: draft.metresPerPixel,
         calibrated: draft.scaleSource !== "guess",
       }));
       setEditor({ tool: "select", selection: null, scalePoints: null });
-      setState({ status: "done", draft });
+      setState({ status: "done", draft: { ...draft, ...snapped } });
     } catch (readError) {
       setState({ status: "error", message: readError.message || "The plan couldn't be read. Please try again." });
     }
@@ -225,7 +229,8 @@ function ReadPlan({ level, levelIndex, underlayUrl, editProperty, setEditor, rea
       {draft ? (
         <p className="terrain-description" role="status">
           Read {draft.walls.length} walls, {openings} doors and windows and {draft.rooms.length} rooms
-          {draft.scaleSource === "measurements" ? ", with the scale from the plan's measurements" : ""}.
+          {draft.scaleSource === "measurements" ? ", with the scale from the plan's measurements" : ""},
+          and lined up {draft.moved} {draft.moved === 1 ? "wall" : "walls"} with the drawing.
           Check them against the plan: select anything to fix or delete it.
         </p>
       ) : state.status !== "error" && (

@@ -91,26 +91,29 @@ export default async function preparePlanImage(file, page = 1) {
 const READING_LONG_EDGE = 2048;
 
 /**
- * The floor's plan image, shrunk for the AI plan reader: { image (base64 JPEG),
- * contentType, width, height }.
+ * The floor's plan image for the AI plan reader: shrunk to fit, on a white square with
+ * the plan at its top-left. The model reads images as squares (a wide plan comes back
+ * squashed otherwise), so sending one makes its coordinates exact. Returns { image
+ * (base64 JPEG), contentType, width, height (the square's side), scale (square pixels
+ * per plan-image pixel) }.
  */
 export async function planImageForReading(url) {
   const response = await fetch(url);
   if (!response.ok) throw new Error("Couldn't load the floorplan image.");
   const bitmap = await createImageBitmap(await response.blob());
-  const scale = Math.min(1, READING_LONG_EDGE / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
+  const longEdge = Math.max(bitmap.width, bitmap.height);
+  const side = Math.min(READING_LONG_EDGE, longEdge);
+  const scale = side / longEdge;
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = side;
+  canvas.height = side;
   const context = canvas.getContext("2d");
   context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, width, height);
-  context.drawImage(bitmap, 0, 0, width, height);
+  context.fillRect(0, 0, side, side);
+  context.drawImage(bitmap, 0, 0, Math.round(bitmap.width * scale), Math.round(bitmap.height * scale));
   bitmap.close();
   const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-  return { image: dataUrl.slice(dataUrl.indexOf(",") + 1), contentType: "image/jpeg", width, height };
+  return { image: dataUrl.slice(dataUrl.indexOf(",") + 1), contentType: "image/jpeg", width: side, height: side, scale };
 }
 
 export function initialUnderlay({ width, height }, imageKey) {

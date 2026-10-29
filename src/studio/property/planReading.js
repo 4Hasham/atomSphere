@@ -33,11 +33,13 @@ const round = (value) => Math.round(value * 1000) / 1000;
 
 /**
  * Maps the model's coordinates to underlay pixels. `space` is "pixels" (of the image
- * sent) or "permille" (0–1000 across each side, as Qwen's grounding is trained).
+ * sent) or "permille" (0–1000 across each side of it, as Qwen's grounding is trained);
+ * `sentScale` is the sent image's pixels per underlay pixel (the plan sits at its
+ * top-left, see planImageForReading).
  */
-export function pixelMapper({ space = "pixels", sentWidth, sentHeight, underlayWidth, underlayHeight }) {
-  const sx = space === "permille" ? underlayWidth / 1000 : underlayWidth / sentWidth;
-  const sy = space === "permille" ? underlayHeight / 1000 : underlayHeight / sentHeight;
+export function pixelMapper({ space = "pixels", sentWidth, sentHeight, sentScale = 1 }) {
+  const sx = (space === "permille" ? sentWidth / 1000 : 1) / sentScale;
+  const sy = (space === "permille" ? sentHeight / 1000 : 1) / sentScale;
   return ([x, y]) => [x * sx, y * sy];
 }
 
@@ -220,8 +222,8 @@ function placeOpenings(walls, rawOpenings) {
 }
 
 /**
- * The draft floor from a reading. `image` describes the image the model saw and the
- * floor's underlay ({ space, sentWidth, sentHeight, underlayWidth, underlayHeight });
+ * The draft floor from a reading. `image` describes the image the model saw
+ * ({ space, sentWidth, sentHeight, sentScale }, see pixelMapper);
  * `knownMetresPerPixel` is the scale the person already set, which wins over the
  * plan's printed measurements; `origin` is the underlay's (plan metres of its corner). Returns { walls, rooms, metresPerPixel, scaleSource,
  * warnings } (scaleSource: "set" | "measurements" | "guess").

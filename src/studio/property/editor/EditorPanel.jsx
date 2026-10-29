@@ -179,8 +179,7 @@ function ReadPlan({ level, levelIndex, underlayUrl, editProperty, setEditor, rea
         space: coordinates,
         sentWidth: image.width,
         sentHeight: image.height,
-        underlayWidth: underlay.width,
-        underlayHeight: underlay.height,
+        sentScale: image.scale,
       }, {
         knownMetresPerPixel: underlay.calibrated ? underlay.metresPerPixel : null,
         guessMetresPerPixel: underlay.metresPerPixel,

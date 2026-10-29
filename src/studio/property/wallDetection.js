@@ -122,7 +122,7 @@ export function wallThickness(mask, width, height) {
 }
 
 /** Sums over a mask, so any rectangle's count is four lookups. */
-function integral(mask, width, height) {
+export function integral(mask, width, height) {
   const sums = new Int32Array((width + 1) * (height + 1));
   for (let y = 0; y < height; y += 1) {
     let row = 0;

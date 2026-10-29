@@ -24,6 +24,8 @@ const FIRM_BELOW = 200;
 // (a 9" wall against a 2 ft ventilator and an 11 ft window).
 const MIN_GAP = 1.5;
 const MAX_GAP = 15;
+// Past a corner, no wider than a door or a modest window; an archway no wider either.
+const MAX_CORNER_GAP = 8;
 // A swing is a door if marks follow the leaf (a line out from the hinge) and the arc
 // for these shares of their length: a clear leaf with a little of a dashed arc, a
 // fainter leaf with most of the arc, or no leaf and nearly all the arc.
@@ -110,7 +112,9 @@ function findGaps(walls, thickness, isWall) {
     const own = frames.get(wall);
     [["lo", -1], ["hi", 1]].forEach(([end, step]) => {
       const at = own[end];
-      if (joined(wall, at)) return;
+      // An end meeting a wall across it is usually a corner, but the line can carry on
+      // past it (a partition meeting a wall that has a door just beyond).
+      const cornered = joined(wall, at);
       let best = null;
       walls.forEach((other) => {
         if (other === wall) return;
@@ -126,7 +130,7 @@ function findGaps(walls, thickness, isWall) {
           distance = (f.across - at) * step;
           kind = "across";
         }
-        if (distance > 0 && (!best || distance < best.distance)) best = { other, distance, kind };
+        if (distance > near && (!best || distance < best.distance)) best = { other, distance, kind };
       });
       if (!best) return;
       // The walk stops at the target's face (centre lines and wall ends are half a wall
@@ -136,7 +140,16 @@ function findGaps(walls, thickness, isWall) {
       let distance = 0;
       while (distance < limit && isBand(distance)) distance += 1;
       const gapStart = distance;
-      while (distance < limit && !isBand(distance)) distance += 1;
+      // Across the gap, stepping over specks of ink in it (where a double door's leaves
+      // meet, a mullion): band starting again is a pillar or wall, not a speck.
+      const speck = thickness * 0.75;
+      for (;;) {
+        while (distance < limit && !isBand(distance)) distance += 1;
+        let run = 0;
+        while (distance + run < limit && run < speck && isBand(distance + run)) run += 1;
+        if (run >= speck || distance + run >= limit) break;
+        distance += run;
+      }
       const gapEnd = distance;
       const width = gapEnd - gapStart;
       if (width < thickness * MIN_GAP || width > thickness * MAX_GAP) return;
@@ -146,12 +159,16 @@ function findGaps(walls, thickness, isWall) {
       let stop = null;
       if (!reached) {
         while (distance < limit && isBand(distance)) distance += 1;
+        // Wall, not the side of some wider block of ink.
         const middle = at + step * (gapEnd + distance) / 2;
         if (bandWidth(middle, own, thickness, isWall) > thickness * MAX_BAND_WIDTH) return;
         if (distance >= limit - thickness * 0.75) reached = true;
         else stop = at + step * (distance - thickness / 2);
       }
       const target = reached ? best.other : null;
+      // Past a corner, only where the wall's own line plainly carries on beyond the gap,
+      // not across a room to whatever wall is in the way.
+      if (cornered && (width > thickness * MAX_CORNER_GAP || !(stop !== null || (target && best.kind === "collinear")))) return;
       const key = target && best.kind === "collinear" ? [walls.indexOf(wall), walls.indexOf(target)].sort().join() : null;
       if (key && seen.has(key)) return;
       if (key) seen.add(key);
@@ -267,12 +284,12 @@ function joinOverlapping(walls, thickness) {
 
 /**
  * The doors and windows in the walls' gaps: { walls (doors and windows bridged over),
- * openings: [{ type, a, b }] }. `walls`, `thickness` and `mask` are detectWalls'
+ * openings: [{ type, a, b }], open: [{ a, b }] (gaps left open) }. `walls`, `thickness` and `mask` are detectWalls'
  * results for the same image; the walls passed in aren't changed.
  */
 export function detectOpenings(image, { walls, thickness, mask }) {
   const { width, height } = image;
-  if (!walls.length || !thickness) return { walls: walls.map((wall) => ({ ...wall })), openings: [] };
+  if (!walls.length || !thickness) return { walls: walls.map((wall) => ({ ...wall })), openings: [], open: [] };
   // Whether a mask has anything within `tolerance` of a point.
   const nearby = (mask) => {
     const sums = integral(mask, width, height);
@@ -332,5 +349,10 @@ export function detectOpenings(image, { walls, thickness, mask }) {
     current = joinOverlapping(current.filter((wall) => !merged.has(wall)), thickness);
     if (!bridged) break;
   }
-  return { walls: current, openings };
+  // The gaps left (archways, or nothing drawn): rooms meet across them. Wider than an
+  // archway, it's an open plan: the spaces run together.
+  const open = findGaps(current, thickness, isWall)
+    .filter((gap) => gap.to - gap.from <= thickness * MAX_CORNER_GAP)
+    .map((gap) => ({ a: point(gap.horizontal, gap.from, gap.across), b: point(gap.horizontal, gap.to, gap.across) }));
+  return { walls: current, openings, open };
 }

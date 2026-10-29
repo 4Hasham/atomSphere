@@ -24,6 +24,8 @@ const MIN_THICKNESS = 4;
 const MAX_THICKNESS_SHARE = 0.05; // of the image's long side
 // A traced band may be this much thinner / thicker than the walls and still be one.
 const THICKNESS_RANGE = [0.5, 2.2];
+// Partitions (half-brick walls) are drawn this thick, as shares of the main walls.
+const PARTITION_RANGE = [0.35, 0.7];
 // A wall is at least this many times as long as it is thick.
 const MIN_LENGTH_RATIO = 1.6;
 // A line beside a wall is open (room) if at most this share of it is ink, and a side is
@@ -390,11 +392,66 @@ export function detectWalls(image) {
   });
   joinEnds(walls, thickness * 1.5);
   const solid = walls.filter((wall) => Math.hypot(wall.b[0] - wall.a[0], wall.b[1] - wall.a[1]) >= thickness);
-  return {
-    // A doorway is about four wall-thicknesses wide (3 ft against 9 in); allow some more.
-    walls: connectedWalls(solid, thickness * 6),
-    thickness,
-    style,
-    mask,
+  // A doorway is about four wall-thicknesses wide (3 ft against 9 in); allow some more.
+  const main = connectedWalls(solid, thickness * 6);
+  const partitions = thinPartitions(ink, mask, main, thickness, width, height);
+  return { walls: [...main, ...partitions.walls], thickness, style, mask: partitions.mask };
+}
+
+/**
+ * Partition walls drawn thinner than the main ones (4½" against 9" brick): bands about
+ * half a wall thick, kept only where they join the main walls (directly or through
+ * other partitions), as partitions do and plants, furniture and lettering don't.
+ * Returns { walls, mask (the main wall pixels and the thin ones) }.
+ */
+function thinPartitions(ink, mask, main, thickness, width, height) {
+  const thin = keepThick(ink, width, height, Math.max(2, Math.round(thickness * PARTITION_RANGE[0])));
+  for (let index = 0; index < thin.length; index += 1) if (mask[index]) thin[index] = 0;
+  const minRun = Math.round(thickness * MIN_LENGTH_RATIO);
+  const fits = (band) => {
+    const across = band.to - band.from;
+    return across >= thickness * PARTITION_RANGE[0] && across < thickness * PARTITION_RANGE[1];
   };
+  const found = [
+    ...traceBands((line, i) => thin[line * width + i], height, width, minRun)
+      .filter((band) => fits(band) && clearBothSides(ink, width, height, band, true, thickness))
+      .map((band) => ({ a: [band.start, (band.from + band.to) / 2], b: [band.end, (band.from + band.to) / 2], thickness: band.to - band.from })),
+    ...traceBands((line, i) => thin[i * width + line], width, height, minRun)
+      .filter((band) => fits(band) && clearBothSides(ink, width, height, band, false, thickness))
+      .map((band) => ({ a: [(band.from + band.to) / 2, band.start], b: [(band.from + band.to) / 2, band.end], thickness: band.to - band.from })),
+  ];
+  // Ends onto the centre lines of the walls they meet, without moving the main walls.
+  const kept = main.map((wall) => ({ a: [...wall.a], b: [...wall.b] }));
+  joinEnds([...main, ...found], thickness * 1.5);
+  main.forEach((wall, index) => Object.assign(wall, kept[index]));
+
+  const span = (wall, axis) => [Math.min(wall.a[axis], wall.b[axis]), Math.max(wall.a[axis], wall.b[axis])];
+  // Within a wall's thickness of a wall (its extent), or of its line (anywhere along it).
+  const touches = (point, wall, anywhere = false) => {
+    const horizontal = wall.a[1] === wall.b[1];
+    const [lo, hi] = span(wall, horizontal ? 0 : 1);
+    const along = horizontal ? point[0] : point[1];
+    const across = horizontal ? Math.abs(point[1] - wall.a[1]) : Math.abs(point[0] - wall.a[0]);
+    return across <= thickness && (anywhere || (along >= lo - thickness && along <= hi + thickness));
+  };
+  // Partitions that meet each other form a group (an L round a wardrobe, say). A group is
+  // kept if it meets a main wall, or at least two of its ends lie on main walls' lines
+  // (where those walls have a door or window just there).
+  const candidates = found.filter((wall) => Math.hypot(wall.b[0] - wall.a[0], wall.b[1] - wall.a[1]) >= thickness);
+  const group = candidates.map((_, index) => index);
+  const root = (index) => (group[index] === index ? index : (group[index] = root(group[index])));
+  candidates.forEach((wall, i) => candidates.forEach((other, j) => {
+    if (i < j && (touches(wall.a, other) || touches(wall.b, other) || touches(other.a, wall) || touches(other.b, wall))) group[root(i)] = root(j);
+  }));
+  const meets = new Map();
+  const onLines = new Map();
+  candidates.forEach((wall, index) => [wall.a, wall.b].forEach((end) => {
+    const key = root(index);
+    if (main.some((other) => touches(end, other))) meets.set(key, true);
+    if (main.some((other) => touches(end, other, true))) onLines.set(key, (onLines.get(key) ?? 0) + 1);
+  }));
+  const accepted = candidates.filter((_, index) => meets.get(root(index)) || (onLines.get(root(index)) ?? 0) >= 2);
+  const both = new Uint8Array(mask);
+  for (let index = 0; index < both.length; index += 1) if (thin[index]) both[index] = 1;
+  return { walls: accepted, mask: both };
 }

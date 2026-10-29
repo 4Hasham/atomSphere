@@ -89,6 +89,32 @@ export function setUnderlay(property, levelIndex, underlay) {
   return updateLevel(property, levelIndex, () => ({ underlay }));
 }
 
+/**
+ * Replaces a floor's walls and rooms with a drawn or read plan (AI floorplan reading),
+ * and updates its plan image's scale to match: one edit, so one undo.
+ */
+export function replaceLevelPlan(property, levelIndex, { walls, rooms }, underlay) {
+  return updateLevel(property, levelIndex, () => ({ walls, rooms, ...(underlay ? { underlay } : {}) }));
+}
+
+/**
+ * Resizes a floor's walls, openings and rooms by `factor` around `about` (plan metres),
+ * as its plan image is rescaled, so what was drawn over the image stays on it. Wall
+ * thickness and heights don't change.
+ */
+export function scaleLevel(property, levelIndex, factor, about) {
+  const scale = ([x, y]) => [about[0] + (x - about[0]) * factor, about[1] + (y - about[1]) * factor];
+  return updateLevel(property, levelIndex, (level) => ({
+    walls: level.walls.map((wall) => ({
+      ...wall,
+      a: scale(wall.a),
+      b: scale(wall.b),
+      openings: wall.openings.map((opening) => ({ ...opening, at: opening.at * factor, width: opening.width * factor })),
+    })),
+    rooms: level.rooms.map((room) => ({ ...room, polygon: room.polygon.map(scale) })),
+  }));
+}
+
 // ---------- Walls ----------
 
 export function addWall(property, levelIndex, a, b, thickness = EXTERIOR_WALL) {

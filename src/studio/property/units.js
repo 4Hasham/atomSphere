@@ -18,7 +18,7 @@ export function formatArea(squareMetres, unit = "ft") {
 }
 
 /**
- * Reads a typed length into metres, or null. Accepts 12'6", 12' 6, 12ft 6in, 12.5 ft,
+ * Reads a typed length into metres, or null. Accepts 12'6", 12'-6", 12' 6, 12ft 6in, 12.5 ft,
  * 12-6 (feet-inches), 150", 3.8 m, 380 cm, 3800 mm. A bare number uses `unit`.
  */
 export function parseLength(text, unit = "ft") {
@@ -32,8 +32,8 @@ export function parseLength(text, unit = "ft") {
     return positive(number * factor);
   }
 
-  // feet and optional inches: 12'6", 12' 6, 12ft 6in, 12 ft, 12-6
-  match = value.match(/^(\d+(?:\.\d+)?)\s*(?:'|ft|feet|foot|-)\s*(?:(\d+(?:\.\d+)?)\s*(?:"|in|inch|inches)?)?$/);
+  // feet and optional inches: 12'6", 12'-6", 12' 6, 12ft 6in, 12 ft, 12-6
+  match = value.match(/^(\d+(?:\.\d+)?)\s*(?:'|ft|feet|foot|-)\s*(?:-\s*)?(?:(\d+(?:\.\d+)?)\s*(?:"|in|inch|inches)?)?$/);
   if (match) return positive(Number(match[1]) * METRES_PER_FOOT + Number(match[2] ?? 0) * METRES_PER_INCH);
 
   match = value.match(/^(\d+(?:\.\d+)?)\s*(?:"|in|inch|inches)$/);

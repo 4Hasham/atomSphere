@@ -86,6 +86,33 @@ export default async function preparePlanImage(file, page = 1) {
 }
 
 /** Initial placement for a new plan: assumed ~15 m wide until its scale is set. */
+// Long edge of the image sent to the AI plan reader: enough for small dimension text,
+// small enough for a quick upload.
+const READING_LONG_EDGE = 2048;
+
+/**
+ * The floor's plan image, shrunk for the AI plan reader: { image (base64 JPEG),
+ * contentType, width, height }.
+ */
+export async function planImageForReading(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Couldn't load the floorplan image.");
+  const bitmap = await createImageBitmap(await response.blob());
+  const scale = Math.min(1, READING_LONG_EDGE / Math.max(bitmap.width, bitmap.height));
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+  return { image: dataUrl.slice(dataUrl.indexOf(",") + 1), contentType: "image/jpeg", width, height };
+}
+
 export function initialUnderlay({ width, height }, imageKey) {
   return { imageKey, width, height, metresPerPixel: 15 / width, origin: [0, 0], opacity: 0.55, calibrated: false };
 }

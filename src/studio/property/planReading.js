@@ -1,7 +1,12 @@
-// AI floorplan reading: turns what a vision model read off a floorplan image into a
-// draft floor of the property document (walls, doors, windows, rooms) and the plan's
-// scale, for the person to check and correct in the trace editor. Pure, so it can be
-// tested without a model.
+// AI floorplan reading: turns a floorplan image into a draft floor of the property
+// document (walls, doors, windows, rooms) and the plan's scale, for the person to check
+// and correct in the trace editor. Pure, so it can be tested without a model.
+//
+// The geometry comes from the drawing itself (readDrawing: the wall, opening and room
+// detectors), which places walls to the pixel; a vision model reads the text (room
+// names and printed sizes), which it does well, though it places things loosely
+// (draftFromDrawing). Where nothing can be found in the drawing, the model's own
+// walls and rooms are used instead (draftFromReading).
 //
 // The reading (the model's answer), in the coordinates of the image it was sent:
 //   walls:      [{ a: [x, y], b: [x, y], exterior: boolean }]
@@ -15,13 +20,16 @@
 import { DOOR, EXTERIOR_WALL, INTERIOR_WALL, ROOM_TYPES, WINDOW } from "./propertyDocument";
 import { newId, projectOntoSegment } from "./propertyEdits";
 import { parseLength } from "./units";
+import { detectWalls } from "./wallDetection";
+import { detectOpenings } from "./openingDetection";
+import { detectRooms } from "./roomDetection";
 
 // Within this angle of horizontal or vertical, a wall is drawn straight.
 const STRAIGHTEN_DEGREES = 4;
 // Corners and wall lines this close (metres) are the same corner or line.
 const SNAP_METRES = 0.25;
 const MIN_WALL_METRES = 0.3;
-const MIN_ROOM_SQ_METRES = 1;
+const MIN_ROOM_SQ_METRES = 0.5;
 // An opening this far (metres) from every wall belongs to none.
 const OPENING_REACH_METRES = 0.45;
 const OPENING_END_GAP = 0.05;
@@ -276,4 +284,210 @@ export function draftFromReading(reading, image, { knownMetresPerPixel = null, g
 
   if (!walls.length) warnings.push("No walls could be read off this plan. Trace them by hand, or try a clearer image.");
   return { walls, rooms, metresPerPixel, scaleSource, warnings };
+}
+
+// Printed room sizes fit a detected room at a scale if both sides agree this closely.
+const SIZE_FIT = 0.12;
+// Without any printed size to go by, walls are taken to be 9" brick.
+const ASSUMED_WALL_METRES = 0.2286;
+// A label further than this share of the house from every room belongs to none.
+const LABEL_REACH = 0.06;
+
+const boxOf = (points) => {
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+};
+
+function insidePolygon([x, y], polygon) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** The scale (metres per pixel) a printed size suggests for a room's clear inside, or null if its sides disagree. */
+function suggestedScale(size, [w, h]) {
+  const spread = ([p, q]) => Math.abs(p - q) / Math.max(p, q);
+  // Sides may be printed either way round.
+  const asWritten = [size[0] / w, size[1] / h];
+  const swapped = [size[1] / w, size[0] / h];
+  const [p, q] = spread(asWritten) <= spread(swapped) ? asWritten : swapped;
+  return spread([p, q]) <= SIZE_FIT ? (p + q) / 2 : null;
+}
+
+/** How far a printed size (metres) is from a room's clear inside (pixels) at a scale: the worse side's error, as a share. */
+function sizeError(size, [w, h], metresPerPixel) {
+  const error = ([a, b]) => Math.max(Math.abs(a - w * metresPerPixel) / a, Math.abs(b - h * metresPerPixel) / b);
+  return Math.min(error(size), error([size[1], size[0]]));
+}
+
+/** Labels paired with the rooms their printed sizes fit at a scale: best fits first, one each. */
+function matchBySize(labels, rooms, metresPerPixel) {
+  const pairs = [];
+  labels.forEach((label) => rooms.forEach((room) => {
+    const error = sizeError(label.size, room.inside, metresPerPixel);
+    // Of equally good fits, the one nearer where the label was read.
+    if (error <= SIZE_FIT) pairs.push({ label, room, error: error + label.distanceTo(room) * 0.05 });
+  }));
+  pairs.sort((p, q) => p.error - q.error);
+  const used = new Set();
+  return pairs.filter(({ label, room }) => {
+    if (used.has(label) || used.has(room)) return false;
+    used.add(label);
+    used.add(room);
+    return true;
+  });
+}
+
+/**
+ * The scale at which most printed room sizes fit detected rooms: every label-room
+ * pairing whose two sides agree suggests one, and the one that most labels fit (each
+ * to its own room) wins, settled on the median of those fits. { metresPerPixel, fits } or null.
+ */
+function scaleFromSizes(labels, rooms) {
+  let best = null;
+  labels.forEach((label) => rooms.forEach((room) => {
+    const metresPerPixel = suggestedScale(label.size, room.inside);
+    if (!metresPerPixel) return;
+    const fits = matchBySize(labels, rooms, metresPerPixel);
+    const error = fits.reduce((sum, fit) => sum + fit.error, 0);
+    if (!best || fits.length > best.fits.length || (fits.length === best.fits.length && error < best.error)) {
+      best = { fits, error };
+    }
+  }));
+  if (!best?.fits.length) return null;
+  const metresPerPixel = median(best.fits.map(({ label, room }) => suggestedScale(label.size, room.inside) ?? 0).filter(Boolean));
+  return { metresPerPixel, fits: matchBySize(labels, rooms, metresPerPixel) };
+}
+
+/**
+ * The draft floor from what was found in the drawing itself (wallDetection.js,
+ * openingDetection.js, roomDetection.js: `drawing` = { walls, openings, rooms,
+ * thickness }, in the pixels of the image they were found in, `drawingScale` of them
+ * to an underlay pixel), named from what the model read off it (`reading`, as for
+ * draftFromReading, in the coordinates of the image it was sent, `image`: see
+ * pixelMapper). The model reads text well but places it loosely, so a label goes to
+ * the detected room its printed size fits, or else the one it falls in once the
+ * model's layout is stretched over the detected house. The sizes also set the scale.
+ * Returns { walls, rooms, metresPerPixel, scaleSource, warnings }, as draftFromReading.
+ */
+export function draftFromDrawing(drawing, reading, image, { drawingScale = 1, knownMetresPerPixel = null, origin = [0, 0] } = {}) {
+  const warnings = [];
+  const toUnderlay = (point) => [point[0] / drawingScale, point[1] / drawingScale];
+  const thickness = drawing.thickness / drawingScale;
+  const detected = (drawing.rooms ?? []).map((room) => {
+    const polygon = room.polygon.map(toUnderlay);
+    const box = boxOf(polygon);
+    // Printed sizes are the clear inside, between the walls' faces.
+    return { polygon, box, inside: [box[2] - box[0] - thickness, box[3] - box[1] - thickness], labels: [] };
+  });
+
+  // The model's labels where it put them, stretched so its rooms span the detected ones.
+  const toPixels = pixelMapper(image);
+  const read = (reading?.rooms ?? [])
+    .map((room) => ({ room, points: (room?.polygon ?? []).filter(validPoint).map(toPixels) }))
+    .filter(({ room, points }) => points.length >= 3 && String(room.name ?? "").trim());
+  let stretch = (point) => point;
+  if (read.length && detected.length) {
+    const from = boxOf(read.flatMap(({ points }) => points));
+    const to = boxOf(detected.flatMap(({ polygon }) => polygon));
+    if (from[2] > from[0] && from[3] > from[1]) {
+      stretch = ([x, y]) => [
+        to[0] + ((x - from[0]) / (from[2] - from[0])) * (to[2] - to[0]),
+        to[1] + ((y - from[1]) / (from[3] - from[1])) * (to[3] - to[1]),
+      ];
+    }
+  }
+  const house = detected.length ? boxOf(detected.flatMap(({ polygon }) => polygon)) : [0, 0, 1, 1];
+  const houseSize = Math.max(house[2] - house[0], house[3] - house[1]) || 1;
+  const labels = read.map(({ room, points }) => {
+    const box = boxOf(points);
+    const at = stretch([(box[0] + box[2]) / 2, (box[1] + box[3]) / 2]);
+    return {
+      name: String(room.name).trim().slice(0, 40),
+      type: room.type,
+      size: parseRoomSize(room.size),
+      // How far the label is from a room, as a share of the house: 0 inside it.
+      distanceTo: (target) => (insidePolygon(at, target.polygon) ? 0
+        : Math.hypot(Math.max(target.box[0] - at[0], 0, at[0] - target.box[2]), Math.max(target.box[1] - at[1], 0, at[1] - target.box[3])) / houseSize),
+    };
+  });
+
+  // The scale: as set, else from the printed sizes, else from the walls' thickness.
+  const sized = labels.filter((label) => label.size);
+  const fromSizes = sized.length && detected.length ? scaleFromSizes(sized, detected) : null;
+  let metresPerPixel = knownMetresPerPixel;
+  let scaleSource = "set";
+  if (!metresPerPixel && fromSizes && (fromSizes.fits.length >= 2 || sized.length === 1)) {
+    metresPerPixel = fromSizes.metresPerPixel;
+    scaleSource = "measurements";
+  }
+  if (!metresPerPixel) {
+    metresPerPixel = ASSUMED_WALL_METRES / thickness;
+    scaleSource = "guess";
+    warnings.push("The plan's scale couldn't be worked out from its room sizes, so it's a guess from the walls. Set the scale, then check the walls.");
+  }
+  if (knownMetresPerPixel && fromSizes?.fits.length >= 2
+    && Math.abs(fromSizes.metresPerPixel - knownMetresPerPixel) / knownMetresPerPixel > SCALE_OUTLIER_RATIO) {
+    warnings.push("The plan's printed room sizes don't match the scale you set. Check the scale.");
+  }
+
+  // Each label to the room its size fits, then the rest to the room they fall in (or
+  // the nearest). A room with several labels is an open plan the drawing doesn't divide.
+  const placed = new Set();
+  matchBySize(sized, detected, metresPerPixel).forEach(({ label, room }) => {
+    room.labels.push(label);
+    placed.add(label);
+  });
+  labels.filter((label) => !placed.has(label)).forEach((label) => {
+    let best = null;
+    detected.forEach((room) => {
+      const away = label.distanceTo(room);
+      // Where the model put it is loose: of rooms about as near, one not yet named.
+      const score = away + (room.labels.length ? LABEL_REACH / 2 : 0);
+      if (away <= LABEL_REACH && (!best || score < best.score)) best = { room, score };
+    });
+    best?.room.labels.push(label);
+  });
+
+  const underlayToMetres = (point) => point.map((value, axis) => round(origin[axis] + value * metresPerPixel));
+  const toMetres = (point) => underlayToMetres(toUnderlay(point));
+  // Walls are drawn 9" or 4½"; whichever the drawn thickness is nearer.
+  const wallThickness = (pixels) => {
+    const metres = (pixels / drawingScale) * metresPerPixel;
+    return Math.abs(metres - INTERIOR_WALL) < Math.abs(metres - EXTERIOR_WALL) ? INTERIOR_WALL : EXTERIOR_WALL;
+  };
+  const walls = (drawing.walls ?? [])
+    .map((wall) => ({ id: newId("wall"), a: toMetres(wall.a), b: toMetres(wall.b), thickness: wallThickness(wall.thickness ?? drawing.thickness), openings: [] }))
+    .filter((wall) => distance(wall.a, wall.b) >= MIN_WALL_METRES);
+  placeOpenings(walls, (drawing.openings ?? []).map((opening) => ({ type: opening.type, a: toMetres(opening.a), b: toMetres(opening.b) })));
+
+  const rooms = detected
+    .map((room) => ({ room, polygon: room.polygon.map(underlayToMetres) }))
+    .filter(({ polygon }) => polygonArea(polygon) >= MIN_ROOM_SQ_METRES)
+    .map(({ room, polygon }) => {
+      // Biggest printed room first: its type stands for an open plan.
+      const named = [...room.labels].sort((p, q) => (q.size ? q.size[0] * q.size[1] : 0) - (p.size ? p.size[0] * p.size[1] : 0));
+      const type = named.length ? roomTypeFor(named[0].type, named[0].name) : "other";
+      const name = named.length ? named.map((label) => label.name).join(" & ").slice(0, 60) : ROOM_TYPES.find((item) => item.id === type).label;
+      return { id: newId("room"), name, type, polygon };
+    });
+
+  if (!walls.length) warnings.push("No walls could be found on this plan. Trace them by hand, or try a clearer image.");
+  return { walls, rooms, metresPerPixel, scaleSource, warnings };
+}
+
+/**
+ * Finds the walls, doors, windows and rooms drawn on a plan image ({ data (RGBA),
+ * width, height }), in its pixels: the `drawing` draftFromDrawing takes.
+ */
+export function readDrawing(image) {
+  const found = detectWalls(image);
+  const { walls, openings, open } = detectOpenings(image, found);
+  const rooms = detectRooms({ walls, open, thickness: found.thickness }, image.width, image.height);
+  return { walls, openings, rooms, thickness: found.thickness };
 }

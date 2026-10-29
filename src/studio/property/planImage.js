@@ -95,7 +95,8 @@ const READING_LONG_EDGE = 2048;
  * the plan at its top-left. The model reads images as squares (a wide plan comes back
  * squashed otherwise), so sending one makes its coordinates exact. Returns { image
  * (base64 JPEG), contentType, width, height (the square's side), scale (square pixels
- * per plan-image pixel), gray (the plan's brightness at that size, for wallSnapping) }.
+ * per plan-image pixel), pixels (the plan's RGBA pixels at that size, for finding its
+ * walls: { data, width, height }), gray (its brightness, for wallSnapping) }.
  */
 export async function planImageForReading(url) {
   const response = await fetch(url);
@@ -126,6 +127,7 @@ export async function planImageForReading(url) {
     width: side,
     height: side,
     scale,
+    pixels: { data: rgba, width: planWidth, height: planHeight },
     gray: { data: gray, width: planWidth, height: planHeight, scale },
   };
 }

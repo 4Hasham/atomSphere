@@ -198,6 +198,9 @@ function ReadPlan({ level, levelIndex, underlayUrl, editProperty, setEditor, rea
         const read = draftFromReading(reading, sentImage, { knownMetresPerPixel, guessMetresPerPixel: underlay.metresPerPixel, origin: underlay.origin });
         // The model places walls roughly; move each onto the wall drawn near it.
         draft = { ...read, ...snapToDrawing(read, gray, { metresPerPixel: read.metresPerPixel, origin: underlay.origin }) };
+        if (!draft.walls.length && !draft.rooms.length) {
+          throw new Error("No walls or rooms were found on this plan, so nothing was changed. AI reading works on house floorplans with the walls drawn as thick lines; a drawing in thin outlines only, like a site or deck plan, needs tracing by hand.");
+        }
       }
       editProperty((p) => replaceLevelPlan(p, levelIndex, draft, {
         ...underlay,

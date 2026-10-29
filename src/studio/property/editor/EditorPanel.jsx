@@ -10,13 +10,17 @@ import {
   removeRoom,
   removeWall,
   renameLevel,
+  replaceLevelPlan,
+  scaleLevel,
   setUnderlay,
   updateOpening,
   updateRoom,
   updateWall,
   wallLength,
 } from "../propertyEdits";
-import preparePlanImage, { checkPlanFile, initialUnderlay, isPdf } from "../planImage";
+import preparePlanImage, { checkPlanFile, initialUnderlay, isPdf, planImageForReading } from "../planImage";
+import { draftFromReading } from "../planReading";
+import { snapToDrawing } from "../wallSnapping";
 import { formatArea, formatLength, parseLength } from "../units";
 import { findTool } from "./editorTools";
 
@@ -156,6 +160,90 @@ function LevelsSection({ property, levelIndex, onPick, editProperty }) {
   );
 }
 
+/**
+ * AI floorplan reading: the plan image goes to the plan reader (readPlan.js), and what it
+ * read becomes this floor's walls, doors, windows and rooms, over the plan, with the
+ * scale from its printed measurements. One edit, so Undo puts the floor back.
+ */
+function ReadPlan({ level, levelIndex, underlayUrl, editProperty, setEditor, readPlan }) {
+  // idle | confirm (the floor already has work) | reading | done | error
+  const [state, setState] = useState({ status: "idle" });
+  const drawn = level.walls.length + level.rooms.length;
+
+  async function read() {
+    setState({ status: "reading" });
+    try {
+      const image = await planImageForReading(underlayUrl);
+      const { gray, ...sent } = image;
+      const { reading, coordinates } = await readPlan(sent);
+      const { underlay } = level;
+      const draft = draftFromReading(reading, {
+        space: coordinates,
+        sentWidth: image.width,
+        sentHeight: image.height,
+        sentScale: image.scale,
+      }, {
+        knownMetresPerPixel: underlay.calibrated ? underlay.metresPerPixel : null,
+        guessMetresPerPixel: underlay.metresPerPixel,
+        origin: underlay.origin,
+      });
+      // The model places walls roughly; move each onto the wall drawn near it.
+      const snapped = snapToDrawing(draft, gray, { metresPerPixel: draft.metresPerPixel, origin: underlay.origin });
+      editProperty((p) => replaceLevelPlan(p, levelIndex, snapped, {
+        ...underlay,
+        metresPerPixel: draft.metresPerPixel,
+        calibrated: draft.scaleSource !== "guess",
+      }));
+      setEditor({ tool: "select", selection: null, scalePoints: null });
+      setState({ status: "done", draft: { ...draft, ...snapped } });
+    } catch (readError) {
+      setState({ status: "error", message: readError.message || "The plan couldn't be read. Please try again." });
+    }
+  }
+
+  if (state.status === "reading") {
+    return <p className="pe-ai is-busy" role="status">Reading the plan… this takes up to half a minute.</p>;
+  }
+  if (state.status === "confirm") {
+    return (
+      <div className="pe-ai">
+        <p className="terrain-description">
+          This replaces what&apos;s drawn on this floor ({level.walls.length} walls, {level.rooms.length} rooms).
+          Undo brings it back.
+        </p>
+        <div className="pe-ai-actions">
+          <button type="button" className="terrain-submit" onClick={read}>Replace with AI reading</button>
+          <button type="button" className="terrain-clear" onClick={() => setState({ status: "idle" })}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+  const draft = state.status === "done" ? state.draft : null;
+  const openings = draft ? draft.walls.reduce((sum, wall) => sum + wall.openings.length, 0) : 0;
+  return (
+    <div className="pe-ai">
+      <button type="button" className="terrain-submit" onClick={() => (drawn ? setState({ status: "confirm" }) : read())}>
+        {draft ? "Read again with AI" : "Read plan with AI"}
+      </button>
+      {state.status === "error" && <p className="terrain-error" role="alert">{state.message}</p>}
+      {draft ? (
+        <p className="terrain-description" role="status">
+          Read {draft.walls.length} walls, {openings} doors and windows and {draft.rooms.length} rooms
+          {draft.scaleSource === "measurements" ? ", with the scale from the plan's measurements" : ""},
+          and lined up {draft.moved} {draft.moved === 1 ? "wall" : "walls"} with the drawing.
+          Check them against the plan: select anything to fix or delete it.
+        </p>
+      ) : state.status !== "error" && (
+        <p className="terrain-description">
+          AI draws the walls, doors, windows and rooms from the plan and finds its scale from the
+          printed measurements. You then check and correct them.
+        </p>
+      )}
+      {draft?.warnings.map((warning) => <p key={warning} className="terrain-error">{warning}</p>)}
+    </div>
+  );
+}
+
 function UnderlaySection({ level, levelIndex, editProperty, editor, setEditor, underlayUrl, setUnderlayImage, persistence }) {
   const [scaleText, setScaleText] = useState("");
   const [error, setError] = useState("");
@@ -202,8 +290,9 @@ function UnderlaySection({ level, levelIndex, editProperty, editor, setEditor, u
     setError("");
     const factor = real / measured;
     const { underlay } = level;
-    // Scale around the first point, so it stays where it was clicked.
-    editProperty((p) => setUnderlay(p, levelIndex, {
+    // Scale around the first point, so it stays where it was clicked. Anything already
+    // drawn over the plan (by hand or by AI) is resized with it, so it stays on it.
+    editProperty((p) => setUnderlay(scaleLevel(p, levelIndex, factor, a), levelIndex, {
       ...underlay,
       metresPerPixel: underlay.metresPerPixel * factor,
       origin: [a[0] - (a[0] - underlay.origin[0]) * factor, a[1] - (a[1] - underlay.origin[1]) * factor],
@@ -240,6 +329,16 @@ function UnderlaySection({ level, levelIndex, editProperty, editor, setEditor, u
         </>
       ) : (
         <>
+          {persistence?.readPlan && (
+            <ReadPlan
+              level={level}
+              levelIndex={levelIndex}
+              underlayUrl={underlayUrl}
+              editProperty={editProperty}
+              setEditor={setEditor}
+              readPlan={persistence.readPlan}
+            />
+          )}
           {pdf && pdf.pageCount > 1 && (
             <Field id="pe-pdf-page" label="PDF page">
               <select
@@ -270,7 +369,9 @@ function UnderlaySection({ level, levelIndex, editProperty, editor, setEditor, u
             <p className="terrain-description">
               {editor.tool === "scale"
                 ? "Click two points on the plan whose real distance you know, such as both ends of a dimension line."
-                : "Set the scale before tracing, so walls come out the right size."}
+                : level.underlay.calibrated
+                  ? "The scale is set. Set it again if walls come out the wrong size: what's drawn is resized with it."
+                  : "Set the scale before tracing, so walls come out the right size."}
             </p>
           )}
           {editor.tool !== "scale" && (

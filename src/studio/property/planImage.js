@@ -86,6 +86,50 @@ export default async function preparePlanImage(file, page = 1) {
 }
 
 /** Initial placement for a new plan: assumed ~15 m wide until its scale is set. */
+// Long edge of the image sent to the AI plan reader: enough for small dimension text,
+// small enough for a quick upload.
+const READING_LONG_EDGE = 2048;
+
+/**
+ * The floor's plan image for the AI plan reader: shrunk to fit, on a white square with
+ * the plan at its top-left. The model reads images as squares (a wide plan comes back
+ * squashed otherwise), so sending one makes its coordinates exact. Returns { image
+ * (base64 JPEG), contentType, width, height (the square's side), scale (square pixels
+ * per plan-image pixel), gray (the plan's brightness at that size, for wallSnapping) }.
+ */
+export async function planImageForReading(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Couldn't load the floorplan image.");
+  const bitmap = await createImageBitmap(await response.blob());
+  const longEdge = Math.max(bitmap.width, bitmap.height);
+  const side = Math.min(READING_LONG_EDGE, longEdge);
+  const scale = side / longEdge;
+  const canvas = document.createElement("canvas");
+  canvas.width = side;
+  canvas.height = side;
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, side, side);
+  const planWidth = Math.round(bitmap.width * scale);
+  const planHeight = Math.round(bitmap.height * scale);
+  context.drawImage(bitmap, 0, 0, planWidth, planHeight);
+  bitmap.close();
+  const rgba = context.getImageData(0, 0, planWidth, planHeight).data;
+  const gray = new Uint8Array(planWidth * planHeight);
+  for (let index = 0; index < gray.length; index += 1) {
+    gray[index] = 0.299 * rgba[index * 4] + 0.587 * rgba[index * 4 + 1] + 0.114 * rgba[index * 4 + 2];
+  }
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+  return {
+    image: dataUrl.slice(dataUrl.indexOf(",") + 1),
+    contentType: "image/jpeg",
+    width: side,
+    height: side,
+    scale,
+    gray: { data: gray, width: planWidth, height: planHeight, scale },
+  };
+}
+
 export function initialUnderlay({ width, height }, imageKey) {
   return { imageKey, width, height, metresPerPixel: 15 / width, origin: [0, 0], opacity: 0.55, calibrated: false };
 }

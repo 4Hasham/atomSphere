@@ -1137,3 +1137,32 @@
     flex-direction: column;
   }
 }
+
+/* ---------- AI floorplan reading ---------- */
+
+.pe-ai {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 10px;
+  background: var(--accent-soft);
+}
+
+.pe-ai.is-busy {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.66rem;
+}
+
+.pe-ai-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pe-ai-actions .terrain-submit,
+.pe-ai-actions .terrain-clear {
+  grid-column: auto;
+}

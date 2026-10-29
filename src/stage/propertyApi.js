@@ -10,6 +10,15 @@ export const createProperty = (token, title) => call(token, { action: "create", 
 export const loadProperty = (token, id) => call(token, { action: "load", id });
 export const saveProperty = (token, id, scene) => call(token, { action: "save", id, scene });
 
+/**
+ * Reads a floorplan image with AI (backend/lambdas/readPlan.js):
+ * { reading, coordinates, model }. `image` is from planImageForReading().
+ */
+export const readPlan = (token, image) => apiRequest(`${import.meta.env.VITE_API_URL}/read-plan`, token, {
+  method: "POST",
+  body: JSON.stringify(image),
+});
+
 /** Turns on the property's share link; resolves with its token (the same until unshared). */
 export const shareProperty = async (token, id) => (await call(token, { action: "share", id })).token;
 export const unshareProperty = (token, id) => call(token, { action: "unshare", id });

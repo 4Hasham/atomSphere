@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import { apiRequest } from "./api";
 import { StudioStatus } from "./Studio";
 import { CREATE_JOB_URL, MODEL_URL_API_URL } from "./stage/model";
-import { loadProperty, saveProperty, shareProperty, unshareProperty, uploadPlanImage } from "./stage/propertyApi";
+import { loadProperty, readPlan, saveProperty, shareProperty, unshareProperty, uploadPlanImage } from "./stage/propertyApi";
 import useJobs from "./stage/useJobs";
 import { ObjectLibraryContext } from "./studio/objects/objectLibrary";
 import ShareButton from "./studio/property/ShareDialog";
@@ -59,6 +59,7 @@ export default function PropertyStudio({ accessToken, propertyId, theme, onToggl
   const persistence = useMemo(() => ({
     save,
     uploadPlanImage: (levelId, blob, onProgress) => uploadPlanImage(accessToken, propertyId, levelId, blob, onProgress),
+    readPlan: (image) => readPlan(accessToken, image),
   }), [save, accessToken, propertyId]);
 
   // The user's objects (made or uploaded), to furnish the property with.

@@ -389,17 +389,27 @@ function UnderlaySection({ level, levelIndex, editProperty, editor, setEditor, u
               Set scale
             </button>
           )}
-          <Field id="pe-underlay-opacity" label="Image opacity">
+          <label className="scene-toggle">
             <input
-              id="pe-underlay-opacity"
-              type="range"
-              min="0.1"
-              max="1"
-              step="0.05"
-              value={level.underlay.opacity ?? 0.55}
-              onChange={(event) => editProperty((p) => setUnderlay(p, levelIndex, { ...level.underlay, opacity: Number(event.target.value) }))}
+              type="checkbox"
+              checked={!level.underlay.hidden}
+              onChange={(event) => editProperty((p) => setUnderlay(p, levelIndex, { ...level.underlay, hidden: !event.target.checked }))}
             />
-          </Field>
+            <span>Show floorplan image</span>
+          </label>
+          {!level.underlay.hidden && (
+            <Field id="pe-underlay-opacity" label="Image opacity">
+              <input
+                id="pe-underlay-opacity"
+                type="range"
+                min="0.1"
+                max="1"
+                step="0.05"
+                value={level.underlay.opacity ?? 0.55}
+                onChange={(event) => editProperty((p) => setUnderlay(p, levelIndex, { ...level.underlay, opacity: Number(event.target.value) }))}
+              />
+            </Field>
+          )}
           <button
             type="button"
             className="terrain-clear"

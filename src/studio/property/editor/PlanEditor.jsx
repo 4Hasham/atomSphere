@@ -447,7 +447,8 @@ export default function PlanEditor() {
     >
       {view && (
         <g transform={`translate(${view.x} ${view.y}) scale(${view.scale})`}>
-          {underlayUrl && level.underlay && (
+          {/* Hidden by choice, except while setting the scale on it. */}
+          {underlayUrl && level.underlay && (!level.underlay.hidden || tool === "scale") && (
             <image
               href={underlayUrl}
               x={level.underlay.origin[0]}

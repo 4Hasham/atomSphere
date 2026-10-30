@@ -19,6 +19,8 @@ const HATCH_BELOW = 236;
 const HATCH_MAX_SATURATION = 0.2;
 // Walls measured thinner than this share of the long side are outlines, not solid.
 const OUTLINE_SHARE = 0.006;
+// The longest wall of a house plan is at least this share of the image's long side.
+const MIN_LONGEST_WALL = 0.2;
 // Band thicknesses (pixels) considered when measuring the walls.
 const MIN_THICKNESS = 4;
 const MAX_THICKNESS_SHARE = 0.05; // of the image's long side
@@ -394,6 +396,11 @@ export function detectWalls(image) {
   const solid = walls.filter((wall) => Math.hypot(wall.b[0] - wall.a[0], wall.b[1] - wall.a[1]) >= thickness);
   // A doorway is about four wall-thicknesses wide (3 ft against 9 in); allow some more.
   const main = connectedWalls(solid, thickness * 6);
+  // A house's outer walls run a good part of the drawing. If nothing does, what was
+  // traced is lettering: a drawing in thin outlines only (a site or deck plan) has no
+  // walls to find.
+  const longest = Math.max(0, ...main.map((wall) => Math.hypot(wall.b[0] - wall.a[0], wall.b[1] - wall.a[1])));
+  if (longest < Math.max(width, height) * MIN_LONGEST_WALL) return { walls: [], thickness, style, mask };
   const partitions = thinPartitions(ink, mask, main, thickness, width, height);
   return { walls: [...main, ...partitions.walls], thickness, style, mask: partitions.mask };
 }

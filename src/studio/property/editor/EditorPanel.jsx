@@ -198,6 +198,9 @@ function ReadPlan({ level, levelIndex, underlayUrl, editProperty, setEditor, rea
         const read = draftFromReading(reading, sentImage, { knownMetresPerPixel, guessMetresPerPixel: underlay.metresPerPixel, origin: underlay.origin });
         // The model places walls roughly; move each onto the wall drawn near it.
         draft = { ...read, ...snapToDrawing(read, gray, { metresPerPixel: read.metresPerPixel, origin: underlay.origin }) };
+        if (!draft.walls.length && !draft.rooms.length) {
+          throw new Error("No walls or rooms were found on this plan, so nothing was changed. AI reading works on house floorplans with the walls drawn as thick lines; a drawing in thin outlines only, like a site or deck plan, needs tracing by hand.");
+        }
       }
       editProperty((p) => replaceLevelPlan(p, levelIndex, draft, {
         ...underlay,
@@ -389,17 +392,27 @@ function UnderlaySection({ level, levelIndex, editProperty, editor, setEditor, u
               Set scale
             </button>
           )}
-          <Field id="pe-underlay-opacity" label="Image opacity">
+          <label className="scene-toggle">
             <input
-              id="pe-underlay-opacity"
-              type="range"
-              min="0.1"
-              max="1"
-              step="0.05"
-              value={level.underlay.opacity ?? 0.55}
-              onChange={(event) => editProperty((p) => setUnderlay(p, levelIndex, { ...level.underlay, opacity: Number(event.target.value) }))}
+              type="checkbox"
+              checked={!level.underlay.hidden}
+              onChange={(event) => editProperty((p) => setUnderlay(p, levelIndex, { ...level.underlay, hidden: !event.target.checked }))}
             />
-          </Field>
+            <span>Show floorplan image</span>
+          </label>
+          {!level.underlay.hidden && (
+            <Field id="pe-underlay-opacity" label="Image opacity">
+              <input
+                id="pe-underlay-opacity"
+                type="range"
+                min="0.1"
+                max="1"
+                step="0.05"
+                value={level.underlay.opacity ?? 0.55}
+                onChange={(event) => editProperty((p) => setUnderlay(p, levelIndex, { ...level.underlay, opacity: Number(event.target.value) }))}
+              />
+            </Field>
+          )}
           <button
             type="button"
             className="terrain-clear"

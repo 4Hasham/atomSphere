@@ -112,6 +112,7 @@ export default function GenerationTray({ jobs, onOpen }) {
             return (
               <li key={job.jobId} className="st-tray-item is-finished">
                 <b title={jobTitle(job)}>{jobTitle(job)}</b>
+                {!ready && job.failureReason && <span className="st-tray-meta">{job.failureReason}</span>}
                 <span className="st-tray-actions">
                   {ready ? (
                     <button type="button" className="st-link" onClick={() => onOpen(job)}>

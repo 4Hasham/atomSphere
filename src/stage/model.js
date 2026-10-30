@@ -106,6 +106,7 @@ export function normalizeJobs(result) {
       outputKey: job.output_key || job.outputKey,
       inputMode: job.input_mode || job.inputMode,
       sizeMeters: job.size_m ?? job.sizeMeters,
+      failureReason: job.failure_reason || job.failureReason,
     };
     const stale = Date.now() - Date.parse(normalized.createdAt) > STALE_UPLOAD_MS;
     if (normalized.inputMode === "upload" && normalized.status === "uploading" && stale) {

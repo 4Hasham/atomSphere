@@ -49,7 +49,7 @@ function ObjectItem({ job, onOpen }) {
       </span>
       <span className="st-item-text" title={job.description || undefined}>
         <b>{jobTitle(job)}</b>
-        <span className={group === "failed" ? "is-danger" : ""}>
+        <span className={group === "failed" ? "is-danger" : ""} title={group === "failed" ? job.failureReason : undefined}>
           {group === "failed" ? `Didn't finish${date ? ` · ${date}` : ""}` : meta}
         </span>
       </span>

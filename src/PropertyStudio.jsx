@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "./api";
 import { StudioStatus } from "./Studio";
 import { CREATE_JOB_URL, MODEL_URL_API_URL } from "./stage/model";
@@ -26,9 +26,16 @@ export default function PropertyStudio({ accessToken, propertyId, theme, onToggl
   const [error, setError] = useState("");
   const [shareToken, setShareToken] = useState(null);
 
+  // Loaded once per property: the token is renewed every hour while it's open, and
+  // reloading then would be wasted (or, if it failed, close Studio).
+  const token = useRef(accessToken);
+  useEffect(() => {
+    token.current = accessToken;
+  }, [accessToken]);
+
   useEffect(() => {
     let active = true;
-    loadProperty(accessToken, propertyId)
+    loadProperty(token.current, propertyId)
       .then((result) => {
         if (!active) return;
         const saved = result.scene ?? {};
@@ -53,7 +60,7 @@ export default function PropertyStudio({ accessToken, propertyId, theme, onToggl
     return () => {
       active = false;
     };
-  }, [accessToken, propertyId]);
+  }, [propertyId]);
 
   const save = useCallback((scene) => saveProperty(accessToken, propertyId, scene), [accessToken, propertyId]);
   const persistence = useMemo(() => ({

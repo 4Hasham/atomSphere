@@ -62,6 +62,12 @@ export default function StudioViewer({
   // Signed URLs expire, so they live beside the document rather than in it.
   const modelUrls = { [jobId]: url };
 
+  // Saving and uploading carry the signed-in token, which is renewed every hour: the
+  // store keeps the calls made with the current one.
+  useEffect(() => {
+    store.setState({ persistence });
+  }, [store, persistence]);
+
   useEffect(() => {
     function handleKeyDown(event) {
       // Keys in a dialog (adding an object) belong to it; viewers have nothing to undo.

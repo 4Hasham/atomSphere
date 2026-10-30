@@ -395,12 +395,12 @@ function UnderlaySection({ level, levelIndex, editProperty, editor, setEditor, u
           <label className="scene-toggle">
             <input
               type="checkbox"
-              checked={!level.underlay.hidden}
-              onChange={(event) => editProperty((p) => setUnderlay(p, levelIndex, { ...level.underlay, hidden: !event.target.checked }))}
+              checked={!editor.hideImage}
+              onChange={(event) => setEditor({ hideImage: !event.target.checked })}
             />
             <span>Show floorplan image</span>
           </label>
-          {!level.underlay.hidden && (
+          {!editor.hideImage && (
             <Field id="pe-underlay-opacity" label="Image opacity">
               <input
                 id="pe-underlay-opacity"

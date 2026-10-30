@@ -1,18 +1,26 @@
-import { Suspense, useRef } from "react";
+import { Suspense, useRef, useState } from "react";
 import { Html } from "@react-three/drei";
+import { useFrame, useThree } from "@react-three/fiber";
+import { Box3, Plane, Vector3 } from "three";
 import PropertyModel from "../property/PropertyModel";
+import WalkControls from "../property/WalkControls";
 import { createPlacedObject } from "../sceneDocument";
 import { useScene } from "../sceneStore";
 import { statusGroup } from "../../stage/model";
 import { useJobsById, useModelUrls, useObjectLibrary } from "./objectLibrary";
-import { placementAt, placementElevation, placementShown } from "./placement";
+import { placementAt, placementElevation, placementShown, turned } from "./placement";
 import { LoadedModel } from "./SceneModel";
 import ViewerErrorBoundary from "./ViewerErrorBoundary";
 
 const SELECTED_COLOR = "#2f6fdf";
 // A pointer that moved further than this between press and release was orbiting.
 const CLICK_SLOP_PX = 4;
+// Walking through, a tapped wall takes you this far (metres) short of it.
+const WALL_STOP = 0.6;
 const noRaycast = () => null;
+const round = (value) => Math.round(value * 100) / 100;
+/** Stops a pointer or click on HTML over the canvas reaching the 3D scene under it. */
+const stop = (event) => event.stopPropagation();
 
 /** Whether the clicked surface faces up (a floor, a roof, a table top) rather than a wall. */
 function facesUp(event) {
@@ -23,7 +31,8 @@ function facesUp(event) {
 /**
  * The property and the objects placed in it. While something is waiting to be placed,
  * a click on a floor, the roof or the ground outside puts it there; otherwise a click
- * selects an object (or clears the selection).
+ * selects an object (or clears the selection), and dragging one moves it about on its
+ * floor. The selected one has its turn and delete controls floating over it.
  */
 export default function FurnishedProperty({ theme }) {
   const property = useScene((state) => state.document.property);
@@ -33,7 +42,10 @@ export default function FurnishedProperty({ theme }) {
   const setStaging = useScene((state) => state.setStaging);
   const addObject = useScene((state) => state.addObject);
   const placeObject = useScene((state) => state.placeObject);
+  const removeObject = useScene((state) => state.removeObject);
   const readOnly = useScene((state) => state.readOnly);
+  const walking = useScene((state) => Boolean(state.walk));
+  const walkTo = useScene((state) => state.walkTo);
   const urls = useModelUrls(objects);
   const jobsById = useJobsById();
   const jobsLoading = useObjectLibrary()?.jobsLoading ?? true;
@@ -60,6 +72,21 @@ export default function FurnishedProperty({ theme }) {
   function handleClick(event) {
     event.stopPropagation();
     if (event.delta > CLICK_SLOP_PX) return;
+    if (walking) {
+      // Walking through: a tapped floor (or the ground outside) is where to go; a
+      // tapped wall, the spot just in front of it.
+      const { level, at } = placementFor(event);
+      if (facesUp(event)) {
+        walkTo({ level, at });
+        return;
+      }
+      const eye = event.eventObject.worldToLocal(event.ray.origin.clone());
+      const away = Math.hypot(at[0] - eye.x, at[1] - eye.z);
+      if (away < 1e-6) return;
+      const back = Math.min(WALL_STOP, away);
+      walkTo({ level, at: [at[0] - ((at[0] - eye.x) / away) * back, at[1] - ((at[1] - eye.z) / away) * back] });
+      return;
+    }
     if (!placing) {
       if (selected) setStaging({ selected: null });
       return;
@@ -78,16 +105,18 @@ export default function FurnishedProperty({ theme }) {
   return (
     <PropertyModel
       property={property}
-      level={view.level}
-      roof={view.roof}
+      // Walking through, the house is whole: ceilings overhead, the roof on top.
+      level={walking ? "all" : view.level}
+      roof={walking || view.roof}
       theme={theme}
-      onClick={readOnly ? undefined : handleClick}
+      onClick={readOnly && !walking ? undefined : handleClick}
       onPointerMove={placing ? handlePointerMove : undefined}
     >
+      {walking && <WalkControls property={property} />}
       {objects.map((object) => {
         // The one being moved follows the pointer instead.
         if (!object.placement || placing?.id === object.id) return null;
-        if (!placementShown(property, object.placement, view.level)) return null;
+        if (!walking && !placementShown(property, object.placement, view.level)) return null;
         return (
           <PlacedObject
             key={object.id}
@@ -98,7 +127,11 @@ export default function FurnishedProperty({ theme }) {
             jobsLoading={jobsLoading}
             selected={selected === object.id}
             // While placing, clicks pass through objects, so things can go on a table.
-            onSelect={placing || readOnly ? undefined : () => setStaging({ selected: object.id })}
+            editable={!placing && !readOnly && !walking}
+            onSelect={() => setStaging({ selected: object.id })}
+            onMove={(at) => placeObject(object.id, { at })}
+            onTurn={(degrees) => placeObject(object.id, { rotation: turned(object.placement.rotation, degrees) })}
+            onRemove={() => removeObject(object.id)}
           />
         );
       })}
@@ -121,7 +154,7 @@ export default function FurnishedProperty({ theme }) {
   );
 }
 
-function PlacedObject({ object, elevation, url, job, jobsLoading, selected, onSelect }) {
+function PlacedObject({ object, elevation, url, job, jobsLoading, selected, editable, onSelect, onMove, onTurn, onRemove }) {
   const { at, rotation } = object.placement;
   const size = object.sizeMeters;
   const status = statusGroup(job?.status);
@@ -133,29 +166,130 @@ function PlacedObject({ object, elevation, url, job, jobsLoading, selected, onSe
     : missing ? "Not available" : status === "active" ? "Making…" : status === "failed" ? "Didn't finish" : "Loading…";
   const failed = url === "error" || status === "failed" || missing;
 
+  const group = useRef(null);
+  const model = useRef(null);
+  const tools = useRef(null);
+  const drag = useRef(null);
+  const [dragging, setDragging] = useState(false);
+  const getThree = useThree((state) => state.get);
+  // The camera holds still while something is dragged.
+  const holdCamera = (held) => {
+    const { controls } = getThree();
+    if (controls) controls.enabled = !held;
+  };
+
+  // The controls float just over the top of the model, however tall it turns out to be.
+  useFrame(() => {
+    if (!selected || !tools.current || !model.current) return;
+    const bounds = new Box3().setFromObject(model.current);
+    if (bounds.isEmpty()) return;
+    tools.current.position.y = bounds.max.y - group.current.getWorldPosition(new Vector3()).y + 0.15;
+  });
+
+  // Dragging slides the object across the level it stands at: where the pointer's ray
+  // meets that horizontal plane, in the property's frame.
+  function pointOnPlane(event) {
+    const hit = event.ray.intersectPlane(drag.current.plane, new Vector3());
+    return hit && group.current.parent.worldToLocal(hit);
+  }
+
+  function onPointerDown(event) {
+    if (!editable || event.button !== 0) return;
+    event.stopPropagation();
+    onSelect();
+    const worldY = group.current.getWorldPosition(new Vector3()).y;
+    drag.current = { plane: new Plane(new Vector3(0, 1, 0), -worldY), start: [event.clientX, event.clientY], moved: false };
+    const grabbed = pointOnPlane(event);
+    if (!grabbed) {
+      drag.current = null;
+      return;
+    }
+    // Where it was grabbed stays under the pointer (no jump to its centre).
+    drag.current.offset = [at[0] - grabbed.x, at[1] - grabbed.z];
+    event.target.setPointerCapture(event.pointerId);
+    holdCamera(true);
+  }
+
+  function onPointerMove(event) {
+    const current = drag.current;
+    if (!current) return;
+    event.stopPropagation();
+    if (!current.moved && Math.hypot(event.clientX - current.start[0], event.clientY - current.start[1]) <= CLICK_SLOP_PX) return;
+    const point = pointOnPlane(event);
+    if (!point) return;
+    if (!current.moved) {
+      current.moved = true;
+      setDragging(true);
+    }
+    current.at = [round(point.x + current.offset[0]), round(point.z + current.offset[1])];
+    group.current.position.x = current.at[0];
+    group.current.position.z = current.at[1];
+  }
+
+  function onPointerUp(event) {
+    const current = drag.current;
+    if (!current) return;
+    event.stopPropagation();
+    event.target.releasePointerCapture(event.pointerId);
+    holdCamera(false);
+    drag.current = null;
+    if (current.moved) {
+      setDragging(false);
+      // One undo step for the whole drag.
+      if (current.at) onMove(current.at);
+    }
+  }
+
   return (
     <group
+      ref={group}
       position={[at[0], elevation, at[1]]}
       rotation-y={(rotation * Math.PI) / 180}
-      onClick={onSelect && ((event) => {
-        event.stopPropagation();
-        if (event.delta <= CLICK_SLOP_PX) onSelect();
-      })}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onPointerOver={editable ? () => { document.body.style.cursor = "grab"; } : undefined}
+      onPointerOut={editable ? () => { document.body.style.cursor = ""; } : undefined}
+      // Selecting happens on press; the click mustn't reach the floor, which deselects.
+      onClick={editable ? stop : undefined}
     >
-      {ready ? (
-        <ViewerErrorBoundary key={url} fallback={<Placeholder size={size} name={object.name} label="Couldn't load" failed />}>
-          <Suspense fallback={<Placeholder size={size} name={object.name} label="Loading…" />}>
-            <LoadedModel url={url} sizeMeters={size} />
-          </Suspense>
-        </ViewerErrorBoundary>
-      ) : (
-        <Placeholder size={size} name={object.name} label={label} failed={failed} />
-      )}
+      <group ref={model}>
+        {ready ? (
+          <ViewerErrorBoundary key={url} fallback={<Placeholder size={size} name={object.name} label="Couldn't load" failed />}>
+            <Suspense fallback={<Placeholder size={size} name={object.name} label="Loading…" />}>
+              <LoadedModel url={url} sizeMeters={size} />
+            </Suspense>
+          </ViewerErrorBoundary>
+        ) : (
+          <Placeholder size={size} name={object.name} label={label} failed={failed} />
+        )}
+      </group>
       {selected && (
         <mesh rotation-x={-Math.PI / 2} position-y={0.03} raycast={noRaycast} renderOrder={2}>
           <ringGeometry args={[size * 0.55, size * 0.55 + Math.max(0.05, size * 0.04), 64]} />
           <meshBasicMaterial color={SELECTED_COLOR} depthTest={false} transparent />
         </mesh>
+      )}
+      {selected && editable && !dragging && (
+        <group ref={tools} position-y={size}>
+          {/* Only the toolbar takes the pointer: its wrapper sits over the object. */}
+          <Html center zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
+            <div
+              className="object-tools"
+              role="toolbar"
+              aria-label={`Arrange ${object.name}`}
+              onPointerDown={stop}
+              onPointerUp={stop}
+              onPointerMove={stop}
+              onClick={stop}
+            >
+              <button type="button" title="Turn left 15°" aria-label="Turn left 15°" onClick={() => onTurn(15)}>↺</button>
+              <button type="button" title="Turn right 15°" aria-label="Turn right 15°" onClick={() => onTurn(-15)}>↻</button>
+              <button type="button" className="is-danger" title={`Remove ${object.name}`} onClick={onRemove}>Delete</button>
+            </div>
+          </Html>
+        </group>
       )}
     </group>
   );

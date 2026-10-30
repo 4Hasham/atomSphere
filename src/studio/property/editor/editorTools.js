@@ -8,6 +8,10 @@ export const TOOLS = [
   { id: "scale", label: "Scale", key: "s", hint: "Click two points on the floorplan whose real distance you know, then type that distance in the panel." },
 ];
 
+// Keys that show or hide the plan image and what's drawn over it.
+export const SHOW_IMAGE_KEY = "i";
+export const SHOW_PLAN_KEY = "p";
+
 export function findTool(id) {
   return TOOLS.find((tool) => tool.id === id) ?? TOOLS[0];
 }

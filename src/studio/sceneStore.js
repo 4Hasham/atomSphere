@@ -29,8 +29,18 @@ export function createSceneStore(initialDocument, initial = {}) {
       propertyView: { level: "all", roof: true },
       setPropertyView: (patch) => set((state) => ({ propertyView: { ...state.propertyView, ...patch } })),
 
+      // Walking through the property in first person (null when not): where you're going
+      // ({ level, at, look }, plan metres; level null is the ground outside), a counter
+      // that changes with each new destination, and the room you're in.
+      walk: null,
+      startWalk: (target) => set({ walk: { target, seq: 1, room: null }, staging: { selected: null, placing: null } }),
+      walkTo: (target) => set((state) => (state.walk ? { walk: { ...state.walk, target, seq: state.walk.seq + 1 } } : {})),
+      setWalkRoom: (room) => set((state) => (state.walk && state.walk.room !== room ? { walk: { ...state.walk, room } } : {})),
+      stopWalk: () => set({ walk: null }),
+
       // Floorplan editor state (not part of the document): 3D or plan, the floor being
-      // edited, the active tool, what's selected and the display unit.
+      // edited, the active tool, what's selected, the display unit, and whether the plan
+      // image and what's drawn over it are hidden (to compare one with the other).
       editor: {
         mode: "3d",
         levelIndex: 0,
@@ -38,6 +48,8 @@ export function createSceneStore(initialDocument, initial = {}) {
         selection: null,
         unit: "ft",
         wallThickness: "exterior",
+        hideImage: false,
+        hidePlan: false,
         ...initial.editor,
       },
       setEditor: (patch) => set((state) => ({ editor: { ...state.editor, ...patch } })),

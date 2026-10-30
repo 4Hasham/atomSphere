@@ -19,6 +19,7 @@ import { createSceneStore, SceneStoreContext, useScene } from "./sceneStore";
 import CameraGroundGuard from "./terrain/CameraGroundGuard";
 import TerrainSurface from "./terrain/TerrainSurface";
 import useTerrain from "./terrain/useTerrain";
+import WalkOverlay, { WalkButton } from "./property/WalkOverlay";
 import SceneControls from "./ui/SceneControls";
 import { SCENE_PRESETS } from "./weather/scenePresets";
 import { LightningFlash, WeatherEffect } from "./weather/WeatherEffect";
@@ -72,7 +73,8 @@ export default function StudioViewer({
     function handleKeyDown(event) {
       // Keys in a dialog (adding an object) belong to it; viewers have nothing to undo.
       if (event.target instanceof Element && event.target.closest("dialog")) return;
-      if (store.getState().readOnly) return;
+      // Walking through has its own keys (Esc ends the walk, not Studio).
+      if (store.getState().walk || store.getState().readOnly) return;
       const { editor, staging, setStaging, removeObject } = store.getState();
       const inPlan = editor.mode === "plan";
       // Esc steps back: stop placing, then clear the selection, then leave Studio. In
@@ -147,6 +149,7 @@ function StudioWorkspace({ modelUrls, theme }) {
   const setStaging = useScene((state) => state.setStaging);
   const setPropertyView = useScene((state) => state.setPropertyView);
   const readOnly = useScene((state) => state.readOnly);
+  const walking = useScene((state) => Boolean(state.walk));
   // Objects placed in a property render with it; any others stand at the centre.
   const looseObjects = objects.filter((object) => !object.placement);
   const terrainStatus = useTerrain(site);
@@ -309,7 +312,8 @@ function StudioWorkspace({ modelUrls, theme }) {
                   ) : (
                     // Keyed on model sizes so a resize reframes the camera (not for
                     // objects placed in a property: arranging them keeps the view).
-                    <Bounds key={looseObjects.map((object) => object.sizeMeters).join()} fit observe margin={1.25}>
+                    // Not refitted while walking through (on a resize, say): the camera is yours then.
+                    <Bounds key={looseObjects.map((object) => object.sizeMeters).join()} fit observe={!walking} margin={1.25}>
                       {propertyModel}
                       {looseObjects.map((object) => (
                         <LoadedModel
@@ -324,8 +328,8 @@ function StudioWorkspace({ modelUrls, theme }) {
               </Suspense>
             </Physics>
 
-            {property && <PropertyCamera level={propertyView.level} />}
-            <OrbitControls
+            {property && !walking && <PropertyCamera level={propertyView.level} />}
+            {!walking && <OrbitControls
               makeDefault
               // Holds still while furnishing, so clicks land where they're aimed.
               autoRotate={!terrain && !staging.placing && !staging.selected}
@@ -335,11 +339,14 @@ function StudioWorkspace({ modelUrls, theme }) {
               // Stay inside the projected ground, and above it when there is no terrain.
               maxDistance={terrain ? 30000 : backdrop.ground ? groundFor(backdrop, modelSize).radius * 0.8 : undefined}
               maxPolarAngle={terrain ? Math.PI : Math.PI / 2 - 0.02}
-            />
+            />}
           </Canvas>
         </div>
-        {modeSwitch}
-        {staging.placing ? (
+        {!walking && modeSwitch}
+        {property && !walking && !staging.placing && <WalkButton />}
+        {walking ? (
+          <WalkOverlay />
+        ) : staging.placing ? (
           <div className="viewer-placing" role="status">
             <span>Click where it goes: a floor, the roof or the ground outside.</span>
             <div className="viewer-placing-floors" role="group" aria-label="Show floor">

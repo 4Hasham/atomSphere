@@ -3,6 +3,7 @@ import { Html } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Box3, Plane, Vector3 } from "three";
 import PropertyModel from "../property/PropertyModel";
+import WalkControls from "../property/WalkControls";
 import { createPlacedObject } from "../sceneDocument";
 import { useScene } from "../sceneStore";
 import { statusGroup } from "../../stage/model";
@@ -14,6 +15,8 @@ import ViewerErrorBoundary from "./ViewerErrorBoundary";
 const SELECTED_COLOR = "#2f6fdf";
 // A pointer that moved further than this between press and release was orbiting.
 const CLICK_SLOP_PX = 4;
+// Walking through, a tapped wall takes you this far (metres) short of it.
+const WALL_STOP = 0.6;
 const noRaycast = () => null;
 const round = (value) => Math.round(value * 100) / 100;
 /** Stops a pointer or click on HTML over the canvas reaching the 3D scene under it. */
@@ -41,6 +44,8 @@ export default function FurnishedProperty({ theme }) {
   const placeObject = useScene((state) => state.placeObject);
   const removeObject = useScene((state) => state.removeObject);
   const readOnly = useScene((state) => state.readOnly);
+  const walking = useScene((state) => Boolean(state.walk));
+  const walkTo = useScene((state) => state.walkTo);
   const urls = useModelUrls(objects);
   const jobsById = useJobsById();
   const jobsLoading = useObjectLibrary()?.jobsLoading ?? true;
@@ -67,6 +72,21 @@ export default function FurnishedProperty({ theme }) {
   function handleClick(event) {
     event.stopPropagation();
     if (event.delta > CLICK_SLOP_PX) return;
+    if (walking) {
+      // Walking through: a tapped floor (or the ground outside) is where to go; a
+      // tapped wall, the spot just in front of it.
+      const { level, at } = placementFor(event);
+      if (facesUp(event)) {
+        walkTo({ level, at });
+        return;
+      }
+      const eye = event.eventObject.worldToLocal(event.ray.origin.clone());
+      const away = Math.hypot(at[0] - eye.x, at[1] - eye.z);
+      if (away < 1e-6) return;
+      const back = Math.min(WALL_STOP, away);
+      walkTo({ level, at: [at[0] - ((at[0] - eye.x) / away) * back, at[1] - ((at[1] - eye.z) / away) * back] });
+      return;
+    }
     if (!placing) {
       if (selected) setStaging({ selected: null });
       return;
@@ -85,16 +105,18 @@ export default function FurnishedProperty({ theme }) {
   return (
     <PropertyModel
       property={property}
-      level={view.level}
-      roof={view.roof}
+      // Walking through, the house is whole: ceilings overhead, the roof on top.
+      level={walking ? "all" : view.level}
+      roof={walking || view.roof}
       theme={theme}
-      onClick={readOnly ? undefined : handleClick}
+      onClick={readOnly && !walking ? undefined : handleClick}
       onPointerMove={placing ? handlePointerMove : undefined}
     >
+      {walking && <WalkControls property={property} />}
       {objects.map((object) => {
         // The one being moved follows the pointer instead.
         if (!object.placement || placing?.id === object.id) return null;
-        if (!placementShown(property, object.placement, view.level)) return null;
+        if (!walking && !placementShown(property, object.placement, view.level)) return null;
         return (
           <PlacedObject
             key={object.id}
@@ -105,7 +127,7 @@ export default function FurnishedProperty({ theme }) {
             jobsLoading={jobsLoading}
             selected={selected === object.id}
             // While placing, clicks pass through objects, so things can go on a table.
-            editable={!placing && !readOnly}
+            editable={!placing && !readOnly && !walking}
             onSelect={() => setStaging({ selected: object.id })}
             onMove={(at) => placeObject(object.id, { at })}
             onTurn={(degrees) => placeObject(object.id, { rotation: turned(object.placement.rotation, degrees) })}

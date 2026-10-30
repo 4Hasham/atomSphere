@@ -15,7 +15,7 @@ import {
 } from "../propertyEdits";
 import { cornersOf, snapPoint } from "../snapping";
 import { formatArea, formatLength } from "../units";
-import { TOOLS } from "./editorTools";
+import { SHOW_IMAGE_KEY, SHOW_PLAN_KEY, TOOLS } from "./editorTools";
 
 const MIN_SCALE = 4; // pixels per metre
 const MAX_SCALE = 400;
@@ -101,7 +101,7 @@ export default function PlanEditor() {
   const levelIndex = Math.min(editor.levelIndex, property.levels.length - 1);
   const level = property.levels[levelIndex];
   const below = levelIndex > 0 ? property.levels[levelIndex - 1] : null;
-  const { tool, selection, unit } = editor;
+  const { tool, selection, unit, hideImage, hidePlan } = editor;
 
   const svgRef = useRef(null);
   const [size, setSize] = useState(null); // measured box; nothing is drawn until known
@@ -209,18 +209,21 @@ export default function PlanEditor() {
         else select(null);
         return;
       }
-      if ((event.key === "Delete" || event.key === "Backspace") && selection) {
+      if ((event.key === "Delete" || event.key === "Backspace") && selection && !hidePlan) {
         event.preventDefault();
         deleteSelection();
         return;
       }
       if (event.ctrlKey || event.metaKey || event.altKey) return;
-      const match = TOOLS.find((item) => item.key === event.key.toLowerCase());
+      const key = event.key.toLowerCase();
+      if (key === SHOW_IMAGE_KEY) setEditor({ hideImage: !hideImage });
+      if (key === SHOW_PLAN_KEY) setEditor({ hidePlan: !hidePlan });
+      const match = TOOLS.find((item) => item.key === key);
       if (match) setEditor({ tool: match.id });
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [draft, setDraft, selection, deleteSelection, select, setEditor]);
+  }, [draft, setDraft, selection, deleteSelection, select, setEditor, hideImage, hidePlan]);
 
   // ---------- Pointer ----------
   function hitTest(point) {
@@ -249,7 +252,9 @@ export default function PlanEditor() {
     const raw = toPlan(event);
     svgRef.current.setPointerCapture(event.pointerId);
 
-    if (event.button === 1 || (tool === "select" && event.shiftKey)) {
+    // With what's drawn hidden there's nothing to pick or add to: only the view moves
+    // (and the scale, which is set on the image).
+    if (event.button === 1 || (tool === "select" && event.shiftKey) || (hidePlan && tool !== "scale")) {
       setDrag({ kind: "pan", start: [event.clientX, event.clientY], view });
       return;
     }
@@ -420,6 +425,28 @@ export default function PlanEditor() {
           </button>
         ))}
         <span className="pe-toolbar-gap" />
+        {/* Show or hide the plan image and what's drawn, to compare one with the other. */}
+        {level.underlay && (
+          <button
+            type="button"
+            className={hideImage ? "" : "is-on"}
+            aria-pressed={!hideImage}
+            title={`${hideImage ? "Show" : "Hide"} the floorplan image (${SHOW_IMAGE_KEY.toUpperCase()})`}
+            onClick={() => setEditor({ hideImage: !hideImage })}
+          >
+            Image
+          </button>
+        )}
+        <button
+          type="button"
+          className={hidePlan ? "" : "is-on"}
+          aria-pressed={!hidePlan}
+          title={`${hidePlan ? "Show" : "Hide"} what's drawn: walls, doors, windows and rooms (${SHOW_PLAN_KEY.toUpperCase()})`}
+          onClick={() => setEditor({ hidePlan: !hidePlan })}
+        >
+          Drawing
+        </button>
+        <span className="pe-toolbar-gap" />
         <button type="button" onClick={fit} title="Fit the floor in view">Fit</button>
         <button
           type="button"
@@ -448,7 +475,7 @@ export default function PlanEditor() {
       {view && (
         <g transform={`translate(${view.x} ${view.y}) scale(${view.scale})`}>
           {/* Hidden by choice, except while setting the scale on it. */}
-          {underlayUrl && level.underlay && (!level.underlay.hidden || tool === "scale") && (
+          {underlayUrl && level.underlay && (!hideImage || tool === "scale") && (
             <image
               href={underlayUrl}
               x={level.underlay.origin[0]}
@@ -474,7 +501,7 @@ export default function PlanEditor() {
             </g>
           ))}
 
-          {level.rooms.map((room) => (
+          {!hidePlan && level.rooms.map((room) => (
             <g key={room.id}>
               <polygon
                 points={points(room.polygon)}
@@ -492,7 +519,7 @@ export default function PlanEditor() {
             </g>
           ))}
 
-          {shownWalls.map((wall) => (
+          {!hidePlan && shownWalls.map((wall) => (
             <line
               key={wall.id}
               x1={wall.a[0]}
@@ -504,7 +531,7 @@ export default function PlanEditor() {
             />
           ))}
 
-          {shownWalls.map((wall) => wall.openings.map((opening) => {
+          {!hidePlan && shownWalls.map((wall) => wall.openings.map((opening) => {
             const length = wallLength(wall);
             if (length < 1e-6) return null;
             const s0 = opening.at - opening.width / 2;
@@ -536,12 +563,12 @@ export default function PlanEditor() {
           }))}
 
           {/* Corner handles while selecting. */}
-          {tool === "select" && cornersOf(shownWalls).map((corner) => (
+          {tool === "select" && !hidePlan && cornersOf(shownWalls).map((corner) => (
             <circle key={`${corner[0]},${corner[1]}`} cx={corner[0]} cy={corner[1]} r={4 * px} strokeWidth={1.5 * px} className="pe-corner" />
           ))}
 
           {/* Selected wall: its length. */}
-          {selection?.kind === "wall" && (() => {
+          {selection?.kind === "wall" && !hidePlan && (() => {
             const wall = shownWalls.find((item) => item.id === selection.id);
             if (!wall) return null;
             const mid = [(wall.a[0] + wall.b[0]) / 2, (wall.a[1] + wall.b[1]) / 2];
@@ -611,7 +638,7 @@ export default function PlanEditor() {
         </g>
       )}
     </svg>
-      {selectionAnchor && !drag && (
+      {selectionAnchor && !drag && !hidePlan && (
         <button
           type="button"
           className="pe-delete"

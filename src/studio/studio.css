@@ -1166,3 +1166,40 @@
 .pe-ai-actions .terrain-clear {
   grid-column: auto;
 }
+
+/* Turn and delete, floating over the selected object in 3D: anchored at its top and
+   lifted clear of it, so it never covers what you'd grab to drag. */
+.object-tools {
+  display: flex;
+  transform: translateY(calc(-50% - 14px));
+  pointer-events: auto;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line-1);
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--soft-shadow);
+  white-space: nowrap;
+}
+
+.object-tools button {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.object-tools button:hover {
+  background: var(--line-1);
+}
+
+.object-tools button.is-danger {
+  color: var(--danger);
+  font-size: 0.66rem;
+  font-weight: 500;
+}

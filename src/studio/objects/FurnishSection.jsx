@@ -7,7 +7,8 @@ import { placementLabel, turned } from "./placement";
 
 /**
  * Furnishing a property in Studio's side panel: add objects (then click where they go),
- * and size, turn, move or remove the selected one.
+ * and size, turn, move or remove the selected one (it can also be dragged in the view,
+ * with turn and delete floating over it there).
  */
 export default function FurnishSection({ SizeControl }) {
   const library = useObjectLibrary();
@@ -72,6 +73,7 @@ export default function FurnishSection({ SizeControl }) {
 
       {selected && (
         <div className="furnish-selected">
+          <p className="terrain-description">Drag it in the view to move it about; Move takes it to another floor or outside.</p>
           <SizeControl key={`${selected.id}-${selected.sizeMeters}`} object={selected} />
           <div className="furnish-actions" role="group" aria-label={`Arrange ${selected.name}`}>
             <button

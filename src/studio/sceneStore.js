@@ -30,7 +30,8 @@ export function createSceneStore(initialDocument, initial = {}) {
       setPropertyView: (patch) => set((state) => ({ propertyView: { ...state.propertyView, ...patch } })),
 
       // Floorplan editor state (not part of the document): 3D or plan, the floor being
-      // edited, the active tool, what's selected and the display unit.
+      // edited, the active tool, what's selected, the display unit, and whether the plan
+      // image and what's drawn over it are hidden (to compare one with the other).
       editor: {
         mode: "3d",
         levelIndex: 0,
@@ -38,6 +39,8 @@ export function createSceneStore(initialDocument, initial = {}) {
         selection: null,
         unit: "ft",
         wallThickness: "exterior",
+        hideImage: false,
+        hidePlan: false,
         ...initial.editor,
       },
       setEditor: (patch) => set((state) => ({ editor: { ...state.editor, ...patch } })),
